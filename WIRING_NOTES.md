@@ -13,16 +13,17 @@ Older pinout notes in `BehaviorRig` were useful as cross-checks, but this docume
 Across both backends, the DAQ-facing digital signals are intended to mean:
 
 - `sync`: irregular sync pulse train for alignment across systems
-- `trial_start`: trial initiated / move-to-target begins
 - `cue TTL`: cue onset marker
 - `reward TTL`: reward delivery marker
 - `session start/stop TTL`: session transition marker
 - `position bits + position strobe`: current target position code after the spout reaches target
+- `trial_start` event: trial initiated / move-to-target begins
 
 Important note:
 
 - `trial_start` is not the same as "spout arrived at target"
 - `position strobe` is the arrival marker for the coded target position
+- on the current Teensy backend, pin `6` is `cue TTL` and pin `10` is `trial_start TTL`
 
 ## Arduino Mega / Zaber (`Behavior_MobileSpouts_Zaber_Arduino_v32.ino`)
 
@@ -71,7 +72,8 @@ Important note:
 | `3` | `PIN_SPEAKER` | output | Audio PWM cue waveform |
 | `4` | `PIN_TTL_STARTSTOP` | output | Session start/stop TTL |
 | `5` | `PIN_REWARD_LEFT_SOLENOID` | output | Solenoid valve control |
-| `6` | `PIN_TTL_TRIAL` | output | Trial-start TTL |
+| `6` | `PIN_CUE_TTL` | output | Cue onset TTL |
+| `10` | `PIN_TTL_TRIAL` | output | Trial-start TTL |
 | `15` | `PIN_LICK_LEFT_IN` | input | Digital lick input |
 | `19` | `PIN_REWARD_LEFT_INDICATOR` | output | Reward TTL / indicator pulse |
 | `14` | `PIN_TTL_POS0` | output | Position code bit 0 |
