@@ -13,6 +13,8 @@ Latest mobile spout behavior GUI and firmware files for the two supported hardwa
   - Arduino Mega / Zaber sketch.
 - `firmware/teensy_smc02/`
   - Teensy / SMC02 sketch.
+- `WIRING_NOTES.md`
+  - Current pinout and DAQ-facing signal notes derived from the exported firmware.
 - `RELEASE_NOTES.md`
   - Short notes describing the current exported versions.
 
