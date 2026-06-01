@@ -1138,7 +1138,7 @@ class BaseApp(tk.Tk):
 
         session = ttk.LabelFrame(right_pane, text="Session control", padding=8)
         session.grid_columnconfigure(0, weight=1)
-        self.home_ref_button = ttk.Button(session, text="HOME", command=self.home_or_reference_action)
+        self.home_ref_button = ttk.Button(session, text="Set current = ref XYZ", command=self.home_or_reference_action)
         self.home_ref_button.grid(row=0, column=0, sticky="ew", pady=2)
         ttk.Button(session, text="Apply ALL session/task settings", command=self.apply_all_session_task_settings).grid(row=1, column=0, sticky="ew", pady=2)
         ttk.Label(session, textvariable=self.device_apply_state_var, wraplength=320, justify="left", foreground="#6a4").grid(row=2, column=0, sticky="w", pady=(2,6))
@@ -3540,7 +3540,11 @@ class BaseApp(tk.Tk):
     def home_or_reference_action(self):
         backend = self.backend_var.get() if hasattr(self, "backend_var") else "teensy_smc02"
         if backend == "mega_zaber":
-            self.send("HOME")
+            messagebox.showinfo(
+                APP_TITLE,
+                "HOME is disabled for the Mega/Zaber backend in this GUI to avoid unsafe axis motion.\n\n"
+                "Use jog controls plus 'Use current XYZ' / apply controls to work in absolute coordinates."
+            )
         else:
             self.apply_current_reference()
 
@@ -5028,7 +5032,11 @@ class App(BaseApp):
 
         if hasattr(self, "home_ref_button"):
             try:
-                self.home_ref_button.configure(text=("HOME" if is_mega else "Set current = ref XYZ"))
+                self.home_ref_button.configure(text="Set current = ref XYZ")
+                if is_mega:
+                    self.home_ref_button.grid_remove()
+                else:
+                    self.home_ref_button.grid()
             except Exception:
                 pass
 
@@ -5036,12 +5044,11 @@ class App(BaseApp):
             if is_mega:
                 self.session_notes_var.set(
                     "Recommended workflow:\n"
-                    "1) HOME axes\n"
-                    "2) Jog to mouth and set MOUTH from current XYZ\n"
-                    "3) Jog to dock/wick and set DOCK from current XYZ\n"
-                    "4) Review generated target positions\n"
-                    "5) Apply task / geometry / lick parameters\n"
-                    "6) START session\n\n"
+                    "1) Jog to mouth and set MOUTH from current XYZ\n"
+                    "2) Jog to dock/wick and set DOCK from current XYZ\n"
+                    "3) Review generated target positions\n"
+                    "4) Apply task / geometry / lick parameters\n"
+                    "5) START session\n\n"
                     "For Mega/Zaber, absolute positioning and device IDs are used instead of timed-motion calibration."
                 )
             else:

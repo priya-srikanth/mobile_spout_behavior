@@ -2,6 +2,7 @@
 #include <ZaberShield.h>
 #include <ZaberConnection.h>
 #include <ZaberCommand.h>
+#include <EEPROM.h>
 #include <math.h>
 
 // ============================================================
@@ -216,6 +217,87 @@ Vec3 mouthOrigin = {0.0f, 0.0f, 0.0f};
 Vec3 dockPosition = {0.0f, -10.0f, -5.0f};
 Vec3 safePosition = {0.0f, 0.0f, -5.0f};
 
+struct PersistedMotionConfig {
+  uint32_t magic;
+  uint16_t version;
+  Vec3 mouthOrigin;
+  Vec3 dockPosition;
+  Vec3 safePosition;
+  uint8_t axisXDeviceId;
+  uint8_t axisYDeviceId;
+  uint8_t axisZDeviceId;
+  uint8_t axisXAxisNumber;
+  uint8_t axisYAxisNumber;
+  uint8_t axisZAxisNumber;
+  float axisXUnitsPerMM;
+  float axisYUnitsPerMM;
+  float axisZUnitsPerMM;
+};
+
+static const uint32_t PERSISTED_MOTION_MAGIC = 0x5A425231UL; // "ZBR1"
+static const uint16_t PERSISTED_MOTION_VERSION = 1;
+static const int EEPROM_ADDR_PERSISTED_MOTION = 0;
+
+PersistedMotionConfig lastSavedMotionConfig;
+
+PersistedMotionConfig currentPersistedMotionConfig() {
+  PersistedMotionConfig cfgPersist;
+  cfgPersist.magic = PERSISTED_MOTION_MAGIC;
+  cfgPersist.version = PERSISTED_MOTION_VERSION;
+  cfgPersist.mouthOrigin = mouthOrigin;
+  cfgPersist.dockPosition = dockPosition;
+  cfgPersist.safePosition = safePosition;
+  cfgPersist.axisXDeviceId = axisX.deviceId;
+  cfgPersist.axisYDeviceId = axisY.deviceId;
+  cfgPersist.axisZDeviceId = axisZ.deviceId;
+  cfgPersist.axisXAxisNumber = axisX.axisNumber;
+  cfgPersist.axisYAxisNumber = axisY.axisNumber;
+  cfgPersist.axisZAxisNumber = axisZ.axisNumber;
+  cfgPersist.axisXUnitsPerMM = axisX.unitsPerMM;
+  cfgPersist.axisYUnitsPerMM = axisY.unitsPerMM;
+  cfgPersist.axisZUnitsPerMM = axisZ.unitsPerMM;
+  return cfgPersist;
+}
+
+bool persistedMotionConfigEquals(const PersistedMotionConfig &a, const PersistedMotionConfig &b) {
+  const uint8_t *pa = reinterpret_cast<const uint8_t*>(&a);
+  const uint8_t *pb = reinterpret_cast<const uint8_t*>(&b);
+  for (unsigned int i = 0; i < sizeof(PersistedMotionConfig); i++) {
+    if (pa[i] != pb[i]) return false;
+  }
+  return true;
+}
+
+void savePersistedMotionConfigIfChanged() {
+  PersistedMotionConfig currentCfg = currentPersistedMotionConfig();
+  if (persistedMotionConfigEquals(currentCfg, lastSavedMotionConfig)) return;
+  EEPROM.put(EEPROM_ADDR_PERSISTED_MOTION, currentCfg);
+  lastSavedMotionConfig = currentCfg;
+}
+
+void loadPersistedMotionConfig() {
+  PersistedMotionConfig stored;
+  EEPROM.get(EEPROM_ADDR_PERSISTED_MOTION, stored);
+  if (stored.magic != PERSISTED_MOTION_MAGIC || stored.version != PERSISTED_MOTION_VERSION) {
+    lastSavedMotionConfig = currentPersistedMotionConfig();
+    return;
+  }
+
+  mouthOrigin = stored.mouthOrigin;
+  dockPosition = stored.dockPosition;
+  safePosition = stored.safePosition;
+  axisX.deviceId = stored.axisXDeviceId;
+  axisY.deviceId = stored.axisYDeviceId;
+  axisZ.deviceId = stored.axisZDeviceId;
+  axisX.axisNumber = stored.axisXAxisNumber;
+  axisY.axisNumber = stored.axisYAxisNumber;
+  axisZ.axisNumber = stored.axisZAxisNumber;
+  axisX.unitsPerMM = stored.axisXUnitsPerMM;
+  axisY.unitsPerMM = stored.axisYUnitsPerMM;
+  axisZ.unitsPerMM = stored.axisZUnitsPerMM;
+  lastSavedMotionConfig = stored;
+}
+
 Vec3 positions[NUM_POSITIONS];
 float currentDistanceMm[NUM_POSITIONS];
 uint8_t positionTierIndex[NUM_POSITIONS] = {0, 0, 0, 1, 1, 1};
@@ -332,6 +414,13 @@ float mmToUnits(const ZAxis& a, float mm) {
 
 long mmToUnitsLong(const ZAxis& a, float mm) {
   return (long)lround(mmToUnits(a, mm));
+}
+
+float unitsToMM(const ZAxis& a, long units) {
+  if (a.unitsPerMM == 0.0f) return 0.0f;
+  float mm = ((float)units) / a.unitsPerMM;
+  if (a.name && a.name[0] == 'z') return -mm;
+  return mm;
 }
 
 float effectiveDownwardAngleDegForAzimuth(float azDeg) {
@@ -730,6 +819,7 @@ void emitConfigKV(const String& key, uint32_t value) { emitConfigKV(key, String(
 void emitConfigKV(const String& key, float value, int digits=3) { emitConfigKV(key, String(value, digits)); }
 
 void emitStatus() {
+  zRefreshAllAxisPosMM();
   uint32_t now = millis();
   uint32_t cueWaitRemaining = 0;
   uint32_t responseRemaining = 0;
@@ -1087,6 +1177,19 @@ bool zGetPosUnits(const ZAxis& axis, long &outPos) {
   if (r.getError() != Result::OK) return false;
   outPos = r.getDataInt();
   return true;
+}
+
+bool zRefreshAxisPosMM(ZAxis &axis) {
+  long posUnits = 0;
+  if (!zGetPosUnits(axis, posUnits)) return false;
+  axis.posMM = unitsToMM(axis, posUnits);
+  return true;
+}
+
+void zRefreshAllAxisPosMM() {
+  zRefreshAxisPosMM(axisX);
+  zRefreshAxisPosMM(axisY);
+  zRefreshAxisPosMM(axisZ);
 }
 
 void serviceDuringZaberWait() {
@@ -1539,13 +1642,13 @@ bool handleSet(const String& key, const String& value) {
   if (key == "geom.down_angle_deg") { if(!parseFloatValue(value,f)) return false; geom.downwardAngleDeg=f; recomputeAllGeneratedPositions(); return true; }
   if (key == "geom.head_roll_deg") { if(!parseFloatValue(value,f)) return false; geom.headRollDeg=f; recomputeAllGeneratedPositions(); return true; }
 
-  if (key == "motion.mouth_origin.x_mm") { if(!parseFloatValue(value,f)) return false; mouthOrigin.x=f; recomputeAllGeneratedPositions(); return true; }
-  if (key == "motion.mouth_origin.y_mm") { if(!parseFloatValue(value,f)) return false; mouthOrigin.y=f; recomputeAllGeneratedPositions(); return true; }
-  if (key == "motion.mouth_origin.z_mm") { if(!parseFloatValue(value,f)) return false; mouthOrigin.z=f; recomputeAllGeneratedPositions(); return true; }
-  if (key == "motion.dock.x_mm") { if(!parseFloatValue(value,f)) return false; dockPosition.x=f; return true; }
-  if (key == "motion.dock.y_mm") { if(!parseFloatValue(value,f)) return false; dockPosition.y=f; return true; }
-  if (key == "motion.dock.z_mm") { if(!parseFloatValue(value,f)) return false; dockPosition.z=f; return true; }
-  if (key == "motion.safe_z_mm") { if(!parseFloatValue(value,f)) return false; safePosition.z=f; return true; }
+  if (key == "motion.mouth_origin.x_mm") { if(!parseFloatValue(value,f)) return false; mouthOrigin.x=f; recomputeAllGeneratedPositions(); savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "motion.mouth_origin.y_mm") { if(!parseFloatValue(value,f)) return false; mouthOrigin.y=f; recomputeAllGeneratedPositions(); savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "motion.mouth_origin.z_mm") { if(!parseFloatValue(value,f)) return false; mouthOrigin.z=f; recomputeAllGeneratedPositions(); savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "motion.dock.x_mm") { if(!parseFloatValue(value,f)) return false; dockPosition.x=f; savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "motion.dock.y_mm") { if(!parseFloatValue(value,f)) return false; dockPosition.y=f; savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "motion.dock.z_mm") { if(!parseFloatValue(value,f)) return false; dockPosition.z=f; savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "motion.safe_z_mm") { if(!parseFloatValue(value,f)) return false; safePosition.z=f; savePersistedMotionConfigIfChanged(); return true; }
 
   if (key == "adapt.enabled") { if(!parseBoolValue(value,b)) return false; adapt.enabled=b; if(!adaptUsePerPosition) syncAdaptivePositionsFromGlobal(); return true; }
   if (key == "adapt.use_per_position") { if(!parseBoolValue(value,b)) return false; adaptUsePerPosition=b; if(!adaptUsePerPosition) syncAdaptivePositionsFromGlobal(); return true; }
@@ -1584,15 +1687,15 @@ bool handleSet(const String& key, const String& value) {
   if (key == "lick.baseline_alpha") { if(!parseFloatValue(value,f)) return false; lickCfg.baselineAlpha=f; return true; }
   if (key == "lick.refractory_ms") { if(!parseUIntValue(value,u)) return false; lickCfg.refractoryMs=u; return true; }
 
-  if (key == "zaber.axis.x.device_id") { if(!parseIntValue(value,i)) return false; axisX.deviceId=(uint8_t)i; return true; }
-  if (key == "zaber.axis.y.device_id") { if(!parseIntValue(value,i)) return false; axisY.deviceId=(uint8_t)i; return true; }
-  if (key == "zaber.axis.z.device_id") { if(!parseIntValue(value,i)) return false; axisZ.deviceId=(uint8_t)i; return true; }
-  if (key == "zaber.axis.x.axis_number") { if(!parseIntValue(value,i)) return false; axisX.axisNumber=(uint8_t)i; return true; }
-  if (key == "zaber.axis.y.axis_number") { if(!parseIntValue(value,i)) return false; axisY.axisNumber=(uint8_t)i; return true; }
-  if (key == "zaber.axis.z.axis_number") { if(!parseIntValue(value,i)) return false; axisZ.axisNumber=(uint8_t)i; return true; }
-  if (key == "zaber.axis.x.units_per_mm") { if(!parseFloatValue(value,f)) return false; axisX.unitsPerMM=f; return true; }
-  if (key == "zaber.axis.y.units_per_mm") { if(!parseFloatValue(value,f)) return false; axisY.unitsPerMM=f; return true; }
-  if (key == "zaber.axis.z.units_per_mm") { if(!parseFloatValue(value,f)) return false; axisZ.unitsPerMM=f; return true; }
+  if (key == "zaber.axis.x.device_id") { if(!parseIntValue(value,i)) return false; axisX.deviceId=(uint8_t)i; savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "zaber.axis.y.device_id") { if(!parseIntValue(value,i)) return false; axisY.deviceId=(uint8_t)i; savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "zaber.axis.z.device_id") { if(!parseIntValue(value,i)) return false; axisZ.deviceId=(uint8_t)i; savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "zaber.axis.x.axis_number") { if(!parseIntValue(value,i)) return false; axisX.axisNumber=(uint8_t)i; savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "zaber.axis.y.axis_number") { if(!parseIntValue(value,i)) return false; axisY.axisNumber=(uint8_t)i; savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "zaber.axis.z.axis_number") { if(!parseIntValue(value,i)) return false; axisZ.axisNumber=(uint8_t)i; savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "zaber.axis.x.units_per_mm") { if(!parseFloatValue(value,f)) return false; axisX.unitsPerMM=f; savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "zaber.axis.y.units_per_mm") { if(!parseFloatValue(value,f)) return false; axisY.unitsPerMM=f; savePersistedMotionConfigIfChanged(); return true; }
+  if (key == "zaber.axis.z.units_per_mm") { if(!parseFloatValue(value,f)) return false; axisZ.unitsPerMM=f; savePersistedMotionConfigIfChanged(); return true; }
 
   if (key == "sync.pulse_ms") { if(!parseUIntValue(value,u)) return false; syncPulseMinMs=u; syncPulseMaxMs=u; return true; }
   if (key == "sync.min_pulse_ms") { if(!parseUIntValue(value,u)) return false; syncPulseMinMs=u; return true; }
@@ -1906,12 +2009,15 @@ void setup() {
   lickCurrent = false;
   buttonPrev = digitalRead(PIN_STARTSTOP_BUTTON);
 
+  loadPersistedMotionConfig();
+  zRefreshAllAxisPosMM();
   syncAdaptivePositionsFromGlobal();
   resetAdaptiveDistances();
   resetSessionStats();
   recomputeAllGeneratedPositions();
   normalizeSchedulerConfig();
   nextSyncAt = millis() + random(syncMinIntervalMs, syncMaxIntervalMs + 1);
+  savePersistedMotionConfigIfChanged();
 
   emitInfoReady();
 }
