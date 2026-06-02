@@ -21,15 +21,16 @@ Latest mobile spout behavior GUI and firmware files for the two supported hardwa
 ## Current files
 
 - `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v40.py`
-- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v33/Behavior_MobileSpouts_Zaber_Arduino_v33.ino`
+- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v34/Behavior_MobileSpouts_Zaber_Arduino_v34.ino`
 - `firmware/teensy_smc02/Behavior_MobileSpouts_Teensy_v34.ino`
 
 ## Version notes
 
 - GUI `v40`
   - Includes the adaptive-scope verification safeguard so per-position adaptive apply is checked on-device after sending settings.
-- Arduino Mega / Zaber firmware `v33`
-  - Repurposes pin `9` from session start/stop TTL to `trial_stop TTL`, pulsed at `dock_start`, while preserving pin `6` as `trial_start TTL`.
+- Arduino Mega / Zaber firmware `v34`
+  - Uses pin `6` for `trial_start TTL` and pin `9` for `trial_stop TTL`, with `trial_stop` pulsed at `dock_start`.
+  - Keeps a `trial_stop_ttl` serial event at the same moment to simplify bench debugging.
 - Teensy / SMC02 firmware `v34`
   - Keeps cue TTL on pin `6`, keeps trial-start TTL on pin `10`, and repurposes pin `4` to `trial_stop TTL`, pulsed at `dock_start`.
 

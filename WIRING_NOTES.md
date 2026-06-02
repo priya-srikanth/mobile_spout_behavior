@@ -3,10 +3,10 @@
 These notes are based on the current source files in this repo:
 
 - `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v40.py`
-- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v33/Behavior_MobileSpouts_Zaber_Arduino_v33.ino`
+- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v34/Behavior_MobileSpouts_Zaber_Arduino_v34.ino`
 - `firmware/teensy_smc02/Behavior_MobileSpouts_Teensy_v34.ino`
 
-Older pinout notes in `BehaviorRig` were useful as cross-checks, but this document is intended to match the current Arduino `v33` and Teensy `v34` firmware files.
+Older pinout notes in `BehaviorRig` were useful as cross-checks, but this document is intended to match the current Arduino `v34` and Teensy `v34` firmware files.
 
 ## Signal meanings
 
@@ -26,7 +26,7 @@ Important note:
 - on the current Teensy backend, pin `6` is `cue TTL`, pin `10` is `trial_start TTL`, and pin `4` is `trial_stop TTL`
 - `trial_stop TTL` pulses at `dock_start`, not after docking completes
 
-## Arduino Mega / Zaber (`Behavior_MobileSpouts_Zaber_Arduino_v33/Behavior_MobileSpouts_Zaber_Arduino_v33.ino`)
+## Arduino Mega / Zaber (`Behavior_MobileSpouts_Zaber_Arduino_v34/Behavior_MobileSpouts_Zaber_Arduino_v34.ino`)
 
 ### Task / DAQ / cue I/O
 

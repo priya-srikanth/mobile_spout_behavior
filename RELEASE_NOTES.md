@@ -3,7 +3,7 @@
 ## Current export
 
 - GUI: `BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v40.py`
-- Arduino Mega / Zaber: `Behavior_MobileSpouts_Zaber_Arduino_v33/Behavior_MobileSpouts_Zaber_Arduino_v33.ino`
+- Arduino Mega / Zaber: `Behavior_MobileSpouts_Zaber_Arduino_v34/Behavior_MobileSpouts_Zaber_Arduino_v34.ino`
 - Teensy / SMC02: `Behavior_MobileSpouts_Teensy_v34.ino`
 
 ## GUI highlights
@@ -16,6 +16,7 @@
 - Manual reward can bypass auto-hold for a single pulse while leaving auto-hold active afterward.
 - Current position events, sync pulses, cue events, and task events remain logged through the existing serial/event pipeline.
 - Arduino pin `6` remains `trial_start TTL`, and pin `9` is now `trial_stop TTL` at `dock_start`.
+- Arduino `v34` keeps a matching `trial_stop_ttl` serial event for scope/console correlation.
 - Teensy pin `6` remains `cue TTL`, pin `10` remains `trial_start TTL`, and pin `4` is now `trial_stop TTL` at `dock_start`.
 
 ## Packaging notes
