@@ -3,10 +3,10 @@
 These notes are based on the current source files in this repo:
 
 - `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v40.py`
-- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v32.ino`
-- `firmware/teensy_smc02/Behavior_MobileSpouts_Teensy_v32.ino`
+- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v33/Behavior_MobileSpouts_Zaber_Arduino_v33.ino`
+- `firmware/teensy_smc02/Behavior_MobileSpouts_Teensy_v34.ino`
 
-Older pinout notes in `BehaviorRig` were useful as cross-checks, but this document is intended to match the current `v32` firmware files.
+Older pinout notes in `BehaviorRig` were useful as cross-checks, but this document is intended to match the current Arduino `v33` and Teensy `v34` firmware files.
 
 ## Signal meanings
 
@@ -15,17 +15,18 @@ Across both backends, the DAQ-facing digital signals are intended to mean:
 - `sync`: irregular sync pulse train for alignment across systems
 - `cue TTL`: cue onset marker
 - `reward TTL`: reward delivery marker
-- `session start/stop TTL`: session transition marker
 - `position bits + position strobe`: current target position code after the spout reaches target
+- `trial_stop TTL`: trial ended / spout begins moving away from the target toward dock
 - `trial_start` event: trial initiated / move-to-target begins
 
 Important note:
 
 - `trial_start` is not the same as "spout arrived at target"
 - `position strobe` is the arrival marker for the coded target position
-- on the current Teensy backend, pin `6` is `cue TTL` and pin `10` is `trial_start TTL`
+- on the current Teensy backend, pin `6` is `cue TTL`, pin `10` is `trial_start TTL`, and pin `4` is `trial_stop TTL`
+- `trial_stop TTL` pulses at `dock_start`, not after docking completes
 
-## Arduino Mega / Zaber (`Behavior_MobileSpouts_Zaber_Arduino_v32.ino`)
+## Arduino Mega / Zaber (`Behavior_MobileSpouts_Zaber_Arduino_v33/Behavior_MobileSpouts_Zaber_Arduino_v33.ino`)
 
 ### Task / DAQ / cue I/O
 
@@ -38,7 +39,7 @@ Important note:
 | `D6` | `PIN_TRIAL_START` | output | Trial-start TTL |
 | `D7` | `PIN_STARTSTOP_BUTTON` | input | Physical start/stop button input |
 | `D8` | `PIN_SOLENOID` | output | Solenoid valve control |
-| `D9` | `PIN_TTL_STARTSTOP` | output | Session start/stop TTL |
+| `D9` | `PIN_TTL_TRIAL_STOP` | output | Trial-stop TTL at `dock_start` |
 | `D11` | `PIN_CUE_AUDIO` | output | Audio tone output to amplifier |
 
 ### Position code outputs
@@ -62,7 +63,7 @@ Important note:
   - then the strobe is pulsed
 - Zaber axis assignment is not a fixed wiring pinout on the Mega in the same sense as the Teensy motor-control lines; motion goes out over serial to the Zaber chain.
 
-## Teensy / SMC02 (`Behavior_MobileSpouts_Teensy_v32.ino`)
+## Teensy / SMC02 (`Behavior_MobileSpouts_Teensy_v34.ino`)
 
 ### Task / DAQ / cue I/O
 
@@ -70,7 +71,7 @@ Important note:
 |---|---|---|---|
 | `2` | `PIN_SYNC_OUT` | output | Sync TTL to DAQ / cameras |
 | `3` | `PIN_SPEAKER` | output | Audio PWM cue waveform |
-| `4` | `PIN_TTL_STARTSTOP` | output | Session start/stop TTL |
+| `4` | `PIN_TTL_TRIAL_STOP` | output | Trial-stop TTL at `dock_start` |
 | `5` | `PIN_REWARD_LEFT_SOLENOID` | output | Solenoid valve control |
 | `6` | `PIN_CUE_TTL` | output | Cue onset TTL |
 | `10` | `PIN_TTL_TRIAL` | output | Trial-start TTL |
@@ -115,6 +116,7 @@ If you want a compact set of behavior-alignment lines on the DAQ, the highest-va
 
 - `sync`
 - `trial_start`
+- `trial_stop`
 - `cue TTL`
 - `reward TTL`
 - `position bit 0`
