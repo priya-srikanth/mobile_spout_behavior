@@ -3,10 +3,10 @@
 These notes are based on the current source files in this repo:
 
 - `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v40.py`
-- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v34/Behavior_MobileSpouts_Zaber_Arduino_v34.ino`
-- `firmware/teensy_smc02/Behavior_MobileSpouts_Teensy_v34.ino`
+- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v35/Behavior_MobileSpouts_Zaber_Arduino_v35.ino`
+- `firmware/teensy_smc02/Behavior_MobileSpouts_Teensy_v35.ino`
 
-Older pinout notes in `BehaviorRig` were useful as cross-checks, but this document is intended to match the current Arduino `v34` and Teensy `v34` firmware files.
+Older pinout notes in `BehaviorRig` were useful as cross-checks, but this document is intended to match the current Arduino `v35` and Teensy `v35` firmware files.
 
 ## Signal meanings
 
