@@ -398,6 +398,10 @@ enum RunState {
   ST_ITI
 };
 
+const char* stateName(RunState s);
+bool shouldHoldTaskReward(RewardTriggerType trigger);
+bool deliverRewardForTrigger(RewardTriggerType trigger);
+
 RunState runState = ST_IDLE;
 
 inline void clearLatchedLick() {

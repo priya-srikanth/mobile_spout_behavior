@@ -35,7 +35,7 @@ namespace Bonsai.Spinnaker
         public ColorProcessingAlgorithm ColorProcessing { get; set; }
 
         [Description("The number of transport-layer stream buffers to allocate on acquisition start when manual buffer mode is enabled.")]
-        public int StreamBufferCount { get; set; } = 64;
+        public int StreamBufferCount { get; set; } = 256;
 
         protected virtual void Configure(IManagedCamera camera)
         {

@@ -3764,6 +3764,16 @@ class BaseApp(tk.Tk):
         expected_value = "1" if expected_use_per_position else "0"
         expected_label = "per-position" if expected_use_per_position else "shared/global"
 
+        if self._current_backend_name() == "mega_zaber":
+            if success_status:
+                self.zaber_status_var.set(success_status)
+            if on_success:
+                try:
+                    on_success()
+                except Exception:
+                    pass
+            return
+
         def _check_scope():
             self._adaptive_verify_after_id = None
             actual_raw = str(self.device_config_cache.get("adapt.use_per_position", "")).strip().lower()
