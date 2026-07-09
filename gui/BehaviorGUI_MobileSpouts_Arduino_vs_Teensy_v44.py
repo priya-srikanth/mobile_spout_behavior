@@ -2260,7 +2260,7 @@ class BaseApp(tk.Tk):
                 self._task_start_wall_unix = None
                 if self._last_status_run:
                     self._session_timeline_end_unix = time.time()
-                    if self.session_logger.active and self._logging_auto_started:
+                    if self.session_logger.active:
                         self.after(0, self.stop_session_logging)
             self._last_status_run = run_now
             elapsed_text = "--"
@@ -4673,8 +4673,12 @@ class BaseApp(tk.Tk):
             )
             if not messagebox.askyesno(APP_TITLE, msg):
                 return
-        if self.auto_log_on_start_var.get() and not self.session_logger.active:
-            self.start_session_logging(auto_started=True)
+        if self.auto_log_on_start_var.get():
+            if self.session_logger.active:
+                self._log_local(f"[GUI] Finalizing active log before START: {self.session_logger.session_dir}")
+                self.stop_session_logging()
+            if not self.session_logger.active:
+                self.start_session_logging(auto_started=True)
         self._clear_session_visual_history()
         self._task_start_wall_unix = time.time()
         self._session_timeline_start_unix = self._task_start_wall_unix
@@ -4699,8 +4703,10 @@ class BaseApp(tk.Tk):
 
     def start_session_logging(self, auto_started=False):
         if self.session_logger.active:
-            self._log_local(f"[GUI] Logging already active: {self.session_logger.session_dir}")
-            return
+            self._log_local(f"[GUI] Finalizing active log before starting a new log: {self.session_logger.session_dir}")
+            self.stop_session_logging()
+            if self.session_logger.active:
+                return
         try:
             self._timeseries_sample_ms = max(1, self.timeseries_interval_var.get_int(self._timeseries_sample_ms or 20))
             gui_cfg = self._config_dict()
