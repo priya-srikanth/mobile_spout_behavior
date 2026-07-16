@@ -39,9 +39,8 @@ static const uint8_t PIN_Z_CW   = 18;
 static const uint8_t PIN_Z_CCW  = 17;
 static const uint8_t PIN_Z_STOP = 16;
 static const uint8_t PIN_LICK_LEFT_IN  = 15;      // single lick input
-static const uint8_t PIN_LICK_TTL_OUT  = 20;      // lick state mirror to photometry DAQ
 static const uint8_t PIN_TTL_POS0    = 14;
-static const uint8_t PIN_TTL_POS_STB = 11;
+static const uint8_t PIN_TTL_POS_STB = 20;
 static const uint8_t PIN_TTL_POS2    = 41;
 static const uint8_t PIN_TTL_POS1    = 40;
 
@@ -486,7 +485,6 @@ void setup() {
   digitalWrite(PIN_TTL_POS1, LOW);
   digitalWrite(PIN_TTL_POS2, LOW);
   digitalWrite(PIN_TTL_POS_STB, LOW);
-  digitalWrite(PIN_LICK_TTL_OUT, LOW);
 
   pinMode(PIN_REWARD_LEFT_SOLENOID, OUTPUT);
   pinMode(PIN_SPEAKER, OUTPUT);
@@ -499,7 +497,6 @@ void setup() {
   pinMode(PIN_TTL_POS1, OUTPUT);
   pinMode(PIN_TTL_POS2, OUTPUT);
   pinMode(PIN_TTL_POS_STB, OUTPUT);
-  pinMode(PIN_LICK_TTL_OUT, OUTPUT);
 
   Serial.begin(115200);
   delay(300);
@@ -1315,7 +1312,6 @@ void updateLick() {
       bool prevState = lickCurrent;
       lickCurrent = currentState;
       lastLickChangeMs = now;
-      digitalWrite(PIN_LICK_TTL_OUT, lickCurrent ? HIGH : LOW);
       if (lickCurrent && !prevState) {
         emitEvent("lick_on");
       } else if (!lickCurrent && prevState) {

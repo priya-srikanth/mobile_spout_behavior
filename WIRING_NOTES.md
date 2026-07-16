@@ -25,7 +25,7 @@ Important note:
 - `position strobe` is the arrival marker for the coded target position
 - on the current Teensy backend, pin `6` is `cue TTL`, pin `10` is `trial_start TTL`, and pin `4` is `trial_stop TTL`
 - `trial_stop TTL` pulses at `dock_start`, not after docking completes
-- on the current Teensy backend, detected licks are mirrored to a DAQ-facing `lick TTL` output on pin `20`
+- on the current Teensy backend, pin `20` is the position strobe output
 - the behavior GUI lick and position displays come from the Teensy serial protocol, not from these physical TTL outputs
 
 ## Arduino Mega / Zaber (`Behavior_MobileSpouts_Zaber_Arduino_v36.ino`)
@@ -78,12 +78,11 @@ Important note:
 | `6` | `PIN_CUE_TTL` | output | Cue onset TTL |
 | `10` | `PIN_TTL_TRIAL` | output | Trial-start TTL |
 | `15` | `PIN_LICK_LEFT_IN` | input | Digital lick input |
-| `20` | `PIN_LICK_TTL_OUT` | output | Teensy-detected lick state mirror for photometry DAQ |
 | `19` | `PIN_REWARD_LEFT_INDICATOR` | output | Reward TTL / indicator pulse |
 | `14` | `PIN_TTL_POS0` | output | Position code bit 0 |
 | `40` | `PIN_TTL_POS1` | output | Position code bit 1 |
 | `41` | `PIN_TTL_POS2` | output | Position code bit 2 |
-| `11` | `PIN_TTL_POS_STB` | output | Position code strobe |
+| `20` | `PIN_TTL_POS_STB` | output | Position code strobe |
 
 ### SMC02 motor-control pins
 
@@ -109,14 +108,11 @@ That means the Teensy control outputs are intended to behave like active-low clo
 - The current firmware is single-solenoid / single-lick-input:
   - no right solenoid
   - no right lick input
-- `PIN_LICK_TTL_OUT` on pin `20` is a debounced state mirror:
-  - `HIGH` while the Teensy considers lick active
-  - `LOW` otherwise
-  - serial `lick_on` / `lick_off` events are unchanged, so behavior GUI display/logging is unaffected
 - Like the Mega build, the position code is 3 bits plus a strobe:
   - bits are written first
   - then the strobe is pulsed
-  - the strobe output is now pin `11`
+  - the strobe output is pin `20`
+- The LabJack photometry rig currently records lick timing from the lick detector board wired directly to LabJack `FIO4`, not from a Teensy-generated lick TTL.
 
 ## Suggested DAQ wiring set
 
@@ -131,7 +127,7 @@ If you want a compact set of behavior-alignment lines on the DAQ, the highest-va
 - `position bit 1`
 - `position bit 2`
 - `position strobe`
-- `lick TTL` from Teensy pin `20`
+- `lick detector output` directly from the detector board
 
 That gives you:
 
@@ -140,7 +136,7 @@ That gives you:
 - reward timing
 - target-position decoding
 - a cross-system sync fingerprint
-- hardware lick timing from the same debounced lick state the behavior GUI displays
+- direct hardware lick timing from the lick detector board
 
 ## Cautions
 
