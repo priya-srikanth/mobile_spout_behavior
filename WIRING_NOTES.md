@@ -3,10 +3,10 @@
 These notes are based on the current source files in this repo:
 
 - `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v44.py`
-- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v35/Behavior_MobileSpouts_Zaber_Arduino_v35.ino`
+- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v36/Behavior_MobileSpouts_Zaber_Arduino_v36.ino`
 - `firmware/teensy_smc02/Behavior_MobileSpouts_Teensy_v36.ino`
 
-Older pinout notes in `BehaviorRig` were useful as cross-checks, but this document is intended to match the current Arduino `v35` and Teensy `v36` firmware files.
+Older pinout notes in `BehaviorRig` were useful as cross-checks, but this document is intended to match the current Arduino `v36` and Teensy `v36` firmware files.
 
 ## Signal meanings
 
@@ -28,7 +28,7 @@ Important note:
 - on the current Teensy backend, detected licks are mirrored to a DAQ-facing `lick TTL` output on pin `20`
 - the behavior GUI lick and position displays come from the Teensy serial protocol, not from these physical TTL outputs
 
-## Arduino Mega / Zaber (`Behavior_MobileSpouts_Zaber_Arduino_v34/Behavior_MobileSpouts_Zaber_Arduino_v34.ino`)
+## Arduino Mega / Zaber (`Behavior_MobileSpouts_Zaber_Arduino_v36.ino`)
 
 ### Task / DAQ / cue I/O
 
@@ -42,7 +42,7 @@ Important note:
 | `D7` | `PIN_STARTSTOP_BUTTON` | input | Physical start/stop button input |
 | `D8` | `PIN_SOLENOID` | output | Solenoid valve control |
 | `D9` | `PIN_TTL_TRIAL_STOP` | output | Trial-stop TTL at `dock_start` |
-| `D11` | `PIN_CUE_AUDIO` | output | Audio tone output to amplifier |
+| `D11` | `PIN_CUE_AUDIO` | output | Audio tone/PWM output to amplifier |
 
 ### Position code outputs
 
@@ -59,7 +59,7 @@ Important note:
 - In the current defaults, lick is treated as active-low.
 - The cue has two separate outputs:
   - `D5` cue TTL for DAQ/event marking
-  - `D11` actual audio waveform to the amplifier/speaker
+  - `D11` actual audio tone/PWM waveform to the amplifier/speaker, via `PIN_CUE_AUDIO`
 - The position code is 3 bits plus a strobe:
   - bits are written first
   - then the strobe is pulsed
