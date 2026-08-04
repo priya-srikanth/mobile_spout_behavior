@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>2pRAM Teensy wiring — Mobile Spouts v37</title>
+<style>
+  :root { --ink:#1a1a1a; --mute:#666; --line:#d0d0d0; --warn:#b3261e; --warnbg:#fdeceb;
+          --ok:#1b5e20; --okbg:#edf7ee; --add:#0b4f8a; --addbg:#eaf2fa; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+         color:var(--ink); max-width:9.2in; margin:0 auto; padding:0.5in 0.6in; line-height:1.45; font-size:10.5pt; }
+  h1 { font-size:19pt; margin:0 0 2px; letter-spacing:-0.01em; }
+  h2 { font-size:13pt; margin:24px 0 8px; padding-bottom:4px; border-bottom:2px solid var(--ink); }
+  h3 { font-size:11pt; margin:15px 0 6px; }
+  .sub { color:var(--mute); margin:0 0 4px; font-size:10pt; }
+  table { border-collapse:collapse; width:100%; margin:8px 0 13px; font-size:9.5pt; }
+  th,td { border:1px solid var(--line); padding:4px 7px; text-align:left; vertical-align:top; }
+  th { background:#f2f2f2; font-weight:600; }
+  td.pin, th.pin { width:56px; text-align:center; font-weight:700; font-variant-numeric:tabular-nums; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:9pt; background:#f4f4f4; padding:0 3px; border-radius:2px; }
+  .box { border-left:4px solid; padding:9px 12px; margin:12px 0; border-radius:0 3px 3px 0; }
+  .warn { border-color:var(--warn); background:var(--warnbg); }
+  .ok   { border-color:var(--ok);   background:var(--okbg); }
+  .add  { border-color:var(--add);  background:var(--addbg); }
+  .box h3 { margin:0 0 5px; font-size:10.5pt; }
+  .box p, .box ul, .box ol { margin:5px 0; }
+  ul,ol { margin:6px 0; padding-left:20px; } li { margin:3px 0; }
+  .big { font-size:12pt; font-weight:700; }
+  .chk { list-style:none; padding-left:0; }
+  .chk li { padding-left:24px; position:relative; margin:6px 0; }
+  .chk li::before { content:"☐"; position:absolute; left:4px; font-size:13pt; line-height:1; top:1px; }
+  .foot { margin-top:22px; padding-top:8px; border-top:1px solid var(--line); color:var(--mute); font-size:8.5pt; }
+  @media print {
+    body { padding:0.35in; font-size:9.5pt; max-width:none; }
+    h2 { margin-top:14px; break-after:avoid; }
+    .box, table { break-inside:avoid; }
+    .pagebreak { break-before:page; }
+  }
+</style>
+</head>
+<body>
+
+<h1>2pRAM Teensy 4.1 — wiring changes</h1>
+<p class="sub">Mobile Spouts firmware v37 · shared breakout board · left spout only · <span id="d"></span></p>
+
+<div class="box ok">
+<h3>Summary: 6 new wires, a ground bond, and 5 patch cables</h3>
+<p>Nothing on the breakout board is modified, cut, or disconnected. No pin is endangered. No ritual is required when swapping firmware between you and your colleague.</p>
+<p>This works because the six SMC02 motor lines now live on <strong>pins 25–30</strong>, which <code>teensy2spout.ino</code> never declares. Under his firmware they stay high-Z, which <em>is</em> "button released", so his sessions cannot move your stages and neither can a Teensy reset. Every other signal you need is a plain TTL output in both firmwares, and only one firmware runs at a time, so there is no contention anywhere.</p>
+</div>
+
+<h2>1. Starting point — your colleague's board</h2>
+<p class="sub">Unmodified. This is what already exists.</p>
+<table>
+<tr><th class="pin">Pin</th><th>Board hardware</th><th>Reachable?</th></tr>
+<tr><td class="pin">2</td><td>Speaker L (PWM)</td><td>yes</td></tr>
+<tr><td class="pin">3</td><td>Sync BNC</td><td>yes</td></tr>
+<tr><td class="pin">4</td><td>Right spout solenoid driver</td><td>yes</td></tr>
+<tr><td class="pin">5</td><td>Left spout solenoid driver</td><td>yes</td></tr>
+<tr><td class="pin">9</td><td>Opto mod — level converter + RC filter</td><td><strong>no header</strong></td></tr>
+<tr><td class="pin">13</td><td>Teensy onboard LED (his "error light")</td><td><strong>no header</strong></td></tr>
+<tr><td class="pin">14 (A0)</td><td>Left lick detector</td><td>yes</td></tr>
+<tr><td class="pin">15 (A1)</td><td>Speaker R</td><td>yes</td></tr>
+<tr><td class="pin">21</td><td>Random background light driver</td><td>yes</td></tr>
+<tr><td class="pin">22</td><td>External sync TTL <em>input</em></td><td>yes</td></tr>
+<tr><td class="pin">40 / 41</td><td>Opto DAC0 / right lick detector</td><td>yes</td></tr>
+<tr><td class="pin">1, 6, 7, 8,<br>16–20, 23, 24</td><td>TTL indicator outputs → panel BNCs</td><td>yes</td></tr>
+<tr><td class="pin">10–12</td><td>StartStop / camera trig / ext-sync report</td><td>no</td></tr>
+<tr><td class="pin">25–39</td><td><strong>never declared in his firmware</strong></td><td>needs access</td></tr>
+</table>
+
+<h2>2. Shared, no rewiring</h2>
+<p class="sub">Six pins already carry exactly what you need. Flashing your firmware repurposes them in software only.</p>
+<table>
+<tr><th class="pin">Pin</th><th>His firmware</th><th>Your firmware</th></tr>
+<tr><td class="pin">2</td><td>Speaker L</td><td>Audio cue tone — 6 kHz PWM, 1000 ms</td></tr>
+<tr><td class="pin">3</td><td>Sync BNC</td><td>Sync barcode — 2 ms pulses, random 70–170 ms</td></tr>
+<tr><td class="pin">5</td><td>Left spout solenoid</td><td>Reward solenoid</td></tr>
+<tr><td class="pin">14</td><td>Left lick detector</td><td>Lick input — active-LOW, idles HIGH</td></tr>
+<tr><td class="pin">6</td><td>SpeakerTTL BNC</td><td><strong>Cue gate</strong> — HIGH for the full tone</td></tr>
+<tr><td class="pin">19</td><td>LeftRewardIndicator BNC</td><td>Reward TTL — 8 ms pulse</td></tr>
+</table>
+
+<h2>3. Patch cables to WaveSurfer — existing BNCs, no soldering</h2>
+<p class="sub">All five are plain TTL indicator outputs in his firmware, never actuator drivers, so a latched level here is harmless.</p>
+<table>
+<tr><th class="pin">Pin</th><th>Panel BNC</th><th>Your signal</th></tr>
+<tr><td class="pin">7</td><td>TrialStartPin</td><td><strong>Position strobe / trial marker</strong> — 10 ms pulse at target arrival</td></tr>
+<tr><td class="pin">8</td><td>ITIIndicator</td><td>Position bit 0</td></tr>
+<tr><td class="pin">17</td><td>LeftCueIndicator</td><td>Position bit 1</td></tr>
+<tr><td class="pin">18</td><td>RightCueIndicator</td><td>Position bit 2</td></tr>
+<tr><td class="pin">20</td><td>RightRewardIndicator</td><td>Trial-stop — 8 ms pulse at dock</td></tr>
+</table>
+
+<h2>4. What you add — 6 wires + ground <span class="big">←&nbsp;the only soldering</span></h2>
+
+<h3>4a. SMC02 motor lines</h3>
+<table>
+<tr><th class="pin">Pin</th><th>To</th><th>Axis / direction</th></tr>
+<tr><td class="pin">25</td><td>X controller — CW button input</td><td>X forward</td></tr>
+<tr><td class="pin">26</td><td>X controller — CCW button input</td><td>X reverse</td></tr>
+<tr><td class="pin">27</td><td>Y controller — CW button input</td><td>Y forward</td></tr>
+<tr><td class="pin">28</td><td>Y controller — CCW button input</td><td>Y reverse</td></tr>
+<tr><td class="pin">29</td><td>Z controller — CW button input</td><td>Z forward</td></tr>
+<tr><td class="pin">30</td><td>Z controller — CCW button input</td><td>Z reverse</td></tr>
+</table>
+<p><strong>No STOP wires.</strong> In P02 mode the motor halts when CW/CCW is released, and v37 never asserts a STOP line. <code>axisStop()</code> is reachable only from the serial <code>STOP</code> command and releases CW/CCW first regardless, so nothing is lost.</p>
+<p>Pins <strong>31–39</strong> remain free if you ever want the per-axis STOP lines back.</p>
+
+<h3>4b. Ground bond — required</h3>
+<p>Button emulation pulls a line down to <strong>the SMC02's own control ground</strong>. If Teensy GND and SMC02 control GND are not common, "pressed" is undefined and the axis behaves erratically or not at all.</p>
+<p>Run a wire from a Teensy <strong>GND</strong> pin to the control ground of each SMC02. One bond suffices if the three share a supply ground; bonding all three gives lower impedance.</p>
+
+<div class="box warn">
+<h3>Verify before soldering</h3>
+<ul>
+<li><strong>Pins 25–30 must reach the Teensy directly</strong> — a stacking header, ribbon soldered before seating, or pogo pins. This is what makes the whole plan safe; do not substitute pins in 1–24 for convenience. Pin <strong>24 is not safe</strong>: it is his <code>DelayIndicatorPin</code> and he does configure it.</li>
+<li><strong>Is each SMC02 button line ≤3.3 V open-circuit?</strong> Teensy 4.1 is <em>not</em> 5 V tolerant and your idle state is a floating pin. If any sits higher, insert an optocoupler or open-drain buffer.</li>
+<li><strong>Ground loops.</strong> You are bonding the Teensy to three stepper-driver grounds while it is also grounded to WaveSurfer through BNC shields. If new noise appears on imaging traces, star-ground the SMC02s instead of tying them to the Teensy, and route motor cable away from signal cable.</li>
+</ul>
+</div>
+
+<h2>5. Never touch</h2>
+<p>Pins <strong>1, 4, 9, 13, 15, 21, 22, 40, 41</strong>. v37 configures none of them in any mode. Pin 4 is the right-spout solenoid and pin 41 its lick detector, both live for your colleague. Pins 9 and 13 have no header. Spare and free: <strong>0, 16, 23, 31–39</strong>.</p>
+
+<h2 class="pagebreak">6. WaveSurfer channels</h2>
+<p class="sub">Eight channels. Sample at 1 kHz minimum, 10 kHz comfortable.</p>
+<table>
+<tr><th class="pin">Pin</th><th>Signal</th><th>Shape</th></tr>
+<tr><td class="pin">3</td><td>Sync barcode</td><td>2 ms pulses, random 70–170 ms gaps</td></tr>
+<tr><td class="pin">7</td><td>Position strobe / trial marker</td><td>10 ms pulse at target arrival</td></tr>
+<tr><td class="pin">8 / 17 / 18</td><td>Position bits 0 / 1 / 2</td><td>Latched levels, valid when the strobe fires</td></tr>
+<tr><td class="pin">6</td><td>Cue gate</td><td>Level, 1000 ms default — ↑ onset, ↓ offset</td></tr>
+<tr><td class="pin">19</td><td>Reward</td><td>8 ms pulse</td></tr>
+<tr><td class="pin">20</td><td>Trial stop</td><td>8 ms pulse at dock</td></tr>
+</table>
+
+<h3>Reading a trial off the traces</h3>
+<table>
+<tr><th>Order</th><th>Channel</th><th>Event</th></tr>
+<tr><td>1</td><td>pin 7 strobe</td><td>Target arrival. Latch pins 8/17/18 on this edge → <code>index = POS0 + 2·POS1 + 4·POS2</code></td></tr>
+<tr><td>2</td><td>pin 6 ↑</td><td>Cue tone starts (after settle + randomised pre-cue)</td></tr>
+<tr><td>3</td><td>pin 19</td><td>Reward, if earned</td></tr>
+<tr><td>4</td><td>pin 6 ↓</td><td>Cue tone ends</td></tr>
+<tr><td>5</td><td>pin 20</td><td>Trial end, dock begins</td></tr>
+</table>
+
+<div class="box add">
+<h3>The strobe marks arrival, not trial onset</h3>
+<p>There is no hardware trial-start signal on this rig. The strobe fires <em>after</em> the move completes — at default calibration that is <strong>2–3 s after the move begins, varying by several hundred ms across positions</strong>, because travel distance from dock depends on distance tier and azimuth.</p>
+<p>For most analyses this is the marker you want: it sits immediately before settle → pre-cue → cue. But if you align to it as "trial start", you inject a timing offset correlated with spout position — the exact variable you manipulate. True onset is in the session log as <code>EVT name=trial_start</code>; use that if you need the move window.</p>
+<p>Note <code>emitPositionCode()</code> also runs on manual moves, tagged <code>manual=1</code> in the log, so a strobe during setup is not necessarily a trial.</p>
+</div>
+
+<div class="box ok">
+<h3>Now identical across all three rigs</h3>
+<p>2pRAM, GB219 and the Zaber widefield rig all use the same 3-bit position bus plus strobe, the same cue gate, and the same trial-stop pulse. One decoder, one analysis pipeline. The only differences are pin numbers and the motion backend.</p>
+</div>
+
+<h2>7. Bring-up order</h2>
+<ol class="chk">
+<li>Flash v37 (2pRAM build) with motors unconnected. Confirm the GUI connects and <code>GET kind=status</code> responds.</li>
+<li>Run <code>LickScan_Teensy.ino</code>. Confirm pin 14 responds to the left spout and <strong>idles HIGH, drops LOW</strong> on contact. If inverted: <code>SET lick.active_low=false</code>.</li>
+<li>Manual reward with one valve connected. Confirm the correct spout clicks — verify against the physical valve, not the SLN silkscreen.</li>
+<li>Scope pins 7, 8, 17, 18, 6, 19, 20 and confirm each matches section 6 before trusting any DAQ record. Check that the position bits are stable when the strobe fires.</li>
+<li>Power the SMC02s. Connect <strong>one</strong> axis. Jog ±1 mm from the Motion tab, confirm direction, then re-time ms/mm calibration.</li>
+<li>Repeat per axis, then run a full test sequence from the Monitor tab.</li>
+<li>Press <strong>STOP</strong> mid-move. Confirm the stage halts, the remaining axes do <em>not</em> move, and <code>move_aborted</code> appears with a plausible <code>applied_mm</code>.</li>
+<li>Re-reference via Motion tab → "Use current XYZ" after any aborted move. No home switches means this is your only ground truth.</li>
+<li>Flash your colleague's firmware and confirm the stages stay still through a full session of his. This is the check that validates the whole shared-board approach.</li>
+</ol>
+
+<p class="foot">Mobile Spouts v37 · 2pRAM build · serial protocol unchanged from v36, GUI v44 compatible without modification.<br>
+Aborted-move distance is estimated from elapsed time against the ms/mm calibration, not measured — it does not model acceleration ramp-up or deceleration after release. Re-reference after any abort where precision matters. (The Zaber rig has no such caveat: it reads true position off the encoders.)</p>
+
+<script>
+document.getElementById('d').textContent =
+  new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+</script>
+</body>
+</html>
