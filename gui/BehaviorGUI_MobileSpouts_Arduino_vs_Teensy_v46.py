@@ -719,6 +719,8 @@ class BaseApp(tk.Tk):
         self.visual_elapsed_var = tk.StringVar(value="Time since task start: -- min")
         self._task_start_wall_unix = None
         self._last_status_run = None
+        self._start_requested_wall_unix = None
+        self._awaiting_run_confirmation = False
         self.monitor_pos_var = tk.StringVar(value="0")
         self.sequence_dwell_var = NumberVar(value="1200")
         self.sequence_cycles_var = NumberVar(value="1")
@@ -2254,14 +2256,23 @@ class BaseApp(tk.Tk):
             run_str = str(data.get("run", "0")).strip().lower()
             run_now = run_str in ("1", "true", "on")
             if run_now and not self._last_status_run:
-                self._task_start_wall_unix = time.time()
+                start_wall = self._start_requested_wall_unix if self._start_requested_wall_unix is not None else time.time()
+                self._task_start_wall_unix = start_wall
+                if self._session_timeline_start_unix is None:
+                    self._session_timeline_start_unix = start_wall
                 self._session_timeline_end_unix = None
+                self._awaiting_run_confirmation = False
+                self._start_requested_wall_unix = None
             elif not run_now:
-                self._task_start_wall_unix = None
                 if self._last_status_run:
+                    self._task_start_wall_unix = None
                     self._session_timeline_end_unix = time.time()
                     if self.session_logger.active:
                         self.after(0, self.stop_session_logging)
+                elif self._awaiting_run_confirmation:
+                    # Ignore stale idle statuses immediately after START.
+                    # Only a confirmed run=1 transition should begin or end an auto-started log.
+                    pass
             self._last_status_run = run_now
             elapsed_text = "--"
             if run_now and self._task_start_wall_unix is not None:
@@ -4709,11 +4720,13 @@ class BaseApp(tk.Tk):
             if not self.session_logger.active:
                 self.start_session_logging(auto_started=True)
         self._clear_session_visual_history()
-        self._task_start_wall_unix = time.time()
-        self._session_timeline_start_unix = self._task_start_wall_unix
+        self._start_requested_wall_unix = time.time()
+        self._awaiting_run_confirmation = True
+        self._task_start_wall_unix = None
+        self._session_timeline_start_unix = None
         self._session_timeline_end_unix = None
-        self._last_status_run = True
-        self.visual_elapsed_var.set("Time since task start: 0.00 min")
+        self._last_status_run = False
+        self.visual_elapsed_var.set("Time since task start: -- min")
         self.send("START")
 
     def fetch_device_state(self):
