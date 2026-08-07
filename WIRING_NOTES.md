@@ -5,7 +5,10 @@ Derived from the current source files in this repo:
 - `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v44.py`
 - `firmware/teensy_smc02/Behavior_MobileSpouts_2pRAM_Teensy_v37/`
 - `firmware/teensy_smc02/Behavior_MobileSpouts_GB219_Teensy_v37/`
+- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v36/`
 - `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v37/`
+
+Widefield note as of August 7, 2026: the widefield rig is currently using the Arduino Mega / Zaber `v36` firmware, not `v37`.
 
 There are now **three rigs with three different pinouts**. The signal *meanings* are identical across all of them; only the pin numbers and the motion backend differ.
 
@@ -145,7 +148,7 @@ Pin map unchanged from `v36`. Only the `v37` logic fixes apply; no rewiring.
 | Arduino pin | Signal | Notes |
 |---|---|---|
 | `D23` | `PIN_TTL_POS0` | Position code bit 0 |
-| `D24` | `PIN_TTL_POS1` | Position code bit 1 |
+| `D29` | `PIN_TTL_POS1` | Position code bit 1 |
 | `D25` | `PIN_TTL_POS2` | Position code bit 2 |
 | `D26` | `PIN_TTL_POS_STB` | Position code strobe |
 
@@ -154,6 +157,7 @@ Pin map unchanged from `v36`. Only the `v37` logic fixes apply; no rewiring.
 - The cue has two separate outputs: `D5` is the DAQ gate, `D11` is the actual audio waveform to the amplifier. Loudness is set with the external amplifier knob, not in firmware.
 - Motion goes out over serial to the Zaber chain; there is no per-axis motor pinout as on the Teensy rigs.
 - **Closed loop.** `STOP` issues a Zaber `stop` to all three axes and then reads true positions off the encoders, so `move_aborted` carries `actual_mm` and no manual re-referencing is needed. This is the one rig where an aborted move leaves position exactly known.
+- The current widefield bench wiring should follow `v36`, including `position bit 1` on `D29`.
 
 ---
 

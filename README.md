@@ -2,6 +2,8 @@
 
 Mobile spout behavior GUI and firmware for the three rigs currently running the task.
 
+Widefield note as of August 7, 2026: the widefield rig is currently running the Arduino Mega / Zaber `v36` firmware, not `v37`.
+
 | Rig | Location / imaging | MCU | Motion backend |
 |---|---|---|---|
 | **2pRAM** | two-photon room, **Teensy shared with a co-tenant 2-spout task** | Teensy 4.1 | SMC02, button emulation |
@@ -25,6 +27,7 @@ All three run the same task and speak the same serial protocol, so one GUI drive
 - `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v44.py`
 - `firmware/teensy_smc02/Behavior_MobileSpouts_2pRAM_Teensy_v37/`
 - `firmware/teensy_smc02/Behavior_MobileSpouts_GB219_Teensy_v37/`
+- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v36/` — current widefield rig build
 - `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v37/`
 - `tools/LickScan_Teensy/` — read-only pin scanner for identifying lick lines safely
 - `docs/Wiring_2pRAM_Teensy_v37.html` — printable bench wiring sheet for the shared-board rig

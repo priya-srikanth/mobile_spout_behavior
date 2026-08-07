@@ -1,12 +1,14 @@
 # Release Notes
 
-## Current export — firmware `v37`, GUI `v44`
+## Current export — mixed firmware versions, GUI `v44`
 
 - GUI: `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v44.py` (unchanged)
 - 2pRAM Teensy / SMC02: `firmware/teensy_smc02/Behavior_MobileSpouts_2pRAM_Teensy_v37/`
 - GB219 Teensy / SMC02: `firmware/teensy_smc02/Behavior_MobileSpouts_GB219_Teensy_v37/`
-- Widefield Mega / Zaber: `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v37/`
+- Widefield Mega / Zaber: `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v36/`
 - Bench utility: `tools/LickScan_Teensy/`
+
+As of August 7, 2026, the widefield rig is intentionally staying on Arduino Mega / Zaber `v36`, not `v37`.
 
 **The serial protocol is unchanged from `v36`.** Every command, config key, event name and response string is identical, so GUI `v44` drives all three `v37` builds with no modification.
 
