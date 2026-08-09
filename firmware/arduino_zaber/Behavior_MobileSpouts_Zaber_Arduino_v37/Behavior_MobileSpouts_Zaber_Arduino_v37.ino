@@ -28,7 +28,8 @@ static const uint8_t PIN_STARTSTOP_BUTTON = 7; // shield pushbutton on D7
 static const uint8_t PIN_SOLENOID = 8;        // active solenoid output
 static const uint8_t PIN_TTL_TRIAL_STOP = 9;  // trial-stop TTL to DAQ
 static const uint8_t PIN_TTL_POS0 = 23;
-static const uint8_t PIN_TTL_POS1 = 24;
+static const uint8_t PIN_TTL_POS1 = 29;   // D29 on the widefield bench (WIRING_NOTES); pin 24 is the
+                                          // co-tenant's DelayIndicatorPin and must not be driven
 static const uint8_t PIN_TTL_POS2 = 25;
 static const uint8_t PIN_TTL_POS_STB = 26;
 static const uint8_t PIN_CUE_AUDIO = 11;      // actual audio tone output to amplifier
@@ -1124,6 +1125,20 @@ void stopAllStagesAndRefresh();
 // segment that happens to be running. Cleared by START / MOVE / HOME / RESETSESSION.
 volatile bool abortMotion = false;
 
+// True only while zWaitIdle()/zWaitIdleByAddress() owns the Zaber connection.
+//
+// The Zaber link is request/response: the wait loop issues "get pos" and blocks for
+// that device's reply. Issuing MORE commands from inside the loop -- which is what a
+// STOP arriving over serial during a move would do, since handleSerialDuringMotionWait()
+// runs from serviceDuringZaberWait() -- interleaves six extra commands with a reply in
+// flight, and from then on every reply is matched to the wrong request. So a stop
+// requested during a wait only SETS A FLAG; the move path issues the actual stop once
+// the wait has returned and the connection is free again.
+volatile bool inZaberWait = false;
+volatile bool stagesStopPending = false;
+
+void requestStopStages();
+
 // ---------- Cue / reward ----------
 void playCue() {
   if (cfg.cueVolumePct <= 0) return; // mute; on Mega/Zaber, actual loudness is set with the external amplifier knob
@@ -1216,8 +1231,20 @@ void zRefreshAllAxisPosMM() {
 // Issuing "stop" makes the controller decelerate and report IDLE, which lets
 // zWaitIdle() return promptly, and then we read true positions back off the
 // encoders. Closed-loop means no estimation and no manual re-referencing.
+// Ask for the stages to stop. Safe to call from anywhere, including from inside a
+// Zaber wait -- see inZaberWait above.
+void requestStopStages() {
+  abortMotion = true;
+  if (inZaberWait) {
+    stagesStopPending = true;   // deferred: moveAxisAbsMM issues it once the wait returns
+    return;
+  }
+  stopAllStagesAndRefresh();
+}
+
 void stopAllStagesAndRefresh() {
   abortMotion = true;
+  stagesStopPending = false;
   connection.genericCommand("stop", axisX.deviceId, axisX.axisNumber);
   connection.genericCommand("stop", axisY.deviceId, axisY.axisNumber);
   connection.genericCommand("stop", axisZ.deviceId, axisZ.axisNumber);
@@ -1234,32 +1261,38 @@ void serviceDuringZaberWait() {
   updateTTLPulses();
   updateLick();
   updateSync();
-  // updateButton() is edge-detected. Zaber moves take seconds, so without this a
-  // press-and-release entirely inside a move is never seen: the level is back to
-  // HIGH by the time the loop resumes and no edge is ever registered. That made
-  // the physical start/stop button silently dead for the whole move.
-  updateButton();
+  // updateButton() is deliberately NOT called here. It would make the physical
+  // start/stop button live DURING a move (it is edge-detected, so a press+release
+  // inside a multi-second Zaber move is otherwise missed) -- but the button must not
+  // be able to halt a running task. Stop during a session goes through the host STOP
+  // command; the button is serviced from loop() between moves.
 }
 
 bool zWaitIdle(const ZAxis& axis) {
+  inZaberWait = true;
   while (true) {
     Result r = connection.genericCommand("get pos", axis.deviceId, axis.axisNumber);
-    if (r.getError() != Result::OK) return false;
-    if (r.getStatus() == Result::IDLE) return true;
+    if (r.getError() != Result::OK) { inZaberWait = false; return false; }
+    if (r.getStatus() == Result::IDLE) { inZaberWait = false; return true; }
     serviceDuringZaberWait();
+    if (abortMotion) { inZaberWait = false; return true; }   // caller stops the stages
     delay(1);
   }
+  inZaberWait = false;
   return true;
 }
 
 bool zWaitIdleByAddress(uint8_t deviceId, uint8_t axisNumber) {
+  inZaberWait = true;
   while (true) {
     Result r = connection.genericCommand("get pos", deviceId, axisNumber);
-    if (r.getError() != Result::OK) return false;
-    if (r.getStatus() == Result::IDLE) return true;
+    if (r.getError() != Result::OK) { inZaberWait = false; return false; }
+    if (r.getStatus() == Result::IDLE) { inZaberWait = false; return true; }
     serviceDuringZaberWait();
+    if (abortMotion) { inZaberWait = false; return true; }   // caller stops the stages
     delay(1);
   }
+  inZaberWait = false;
   return true;
 }
 
@@ -1280,9 +1313,12 @@ bool moveAxisAbsMM(ZAxis &axis, float targetMM) {
   if (!zWaitIdle(axis)) return false;
 
   if (abortMotion) {
-    // Aborted part-way. Unlike the open-loop SMC02 rigs we do not have to
-    // estimate anything: the Zaber is closed-loop, so read the true position
-    // back off the encoder and report exactly where the stage actually stopped.
+    // Aborted part-way. The wait returned without issuing anything, so the connection
+    // is ours again: issue the deferred stop now (no-op if a stop already ran).
+    if (stagesStopPending) stopAllStagesAndRefresh();
+    // Unlike the open-loop SMC02 rigs we do not have to estimate anything: the Zaber is
+    // closed-loop, so read the true position back off the encoder and report exactly
+    // where the stage actually stopped.
     float requested = targetMM;
     if (zRefreshAxisPosMM(axis)) {
       emitEventDetail("move_aborted",
@@ -1425,7 +1461,7 @@ void updateButton() {
         runState = ST_MOVE_TO_TARGET;
         emitEvent("button_start");
       } else {
-        stopAllStagesAndRefresh();   // physical stop button must halt the stages too
+        requestStopStages();   // between moves, so this stops the stages immediately
         cfg.sessionRunning = false;
         runState = ST_IDLE;
         emitEvent("button_stop");
@@ -1947,7 +1983,7 @@ bool handleSerialDuringMotionWait() {
     return true;
   }
   if (cmd.equalsIgnoreCase("STOP")) {
-    stopAllStagesAndRefresh();   // halt the STAGES, not just the state machine
+    requestStopStages();   // halt the STAGES, not just the state machine (deferred if mid-wait)
     cfg.sessionRunning = false;
     stopPending = false;
     stopPendingReason = STOP_PENDING_NONE;
@@ -1988,7 +2024,7 @@ void handleSerial() {
     emitOK("start");
     return;
   }
-  if (cmd.equalsIgnoreCase("STOP")) { stopAllStagesAndRefresh(); cfg.sessionRunning = false; runState = ST_IDLE; emitOK("stop"); return; }
+  if (cmd.equalsIgnoreCase("STOP")) { requestStopStages(); cfg.sessionRunning = false; runState = ST_IDLE; emitOK("stop"); return; }
   if (cmd.equalsIgnoreCase("HOME")) {
     abortMotion = false; homeAllAxes(); return; }
   if (cmd.equalsIgnoreCase("REWARD")) {

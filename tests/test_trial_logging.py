@@ -2,7 +2,8 @@
 
 Regression test for the ``pos_idx`` mislabelling found in the widefield analysis (2026-08-09):
 the position written to ``trials.csv`` was the NEXT trial's position on every trial where the
-position changed (~15% of trials, all sessions, GUI v40..v46).
+position changed (~15% of trials, all sessions, GUI v40..v46). Fixed in v47; v46 is kept as it
+shipped, so this suite runs against v47.
 
 Cause: the firmware emits ``trial_start`` BEFORE ``totalTrials++``, so it reports the PREVIOUS
 trial's id while that trial's own cue/hit/reward events (emitted after the increment) report
@@ -19,13 +20,13 @@ from pathlib import Path
 import pytest
 
 GUI = (Path(__file__).resolve().parents[1] / "gui"
-       / "BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v46.py")
+       / "BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v47.py")
 
 
 def _load_gui():
-    spec = importlib.util.spec_from_file_location("gui_v46", GUI)
+    spec = importlib.util.spec_from_file_location("gui_v47", GUI)
     mod = importlib.util.module_from_spec(spec)
-    sys.modules["gui_v46"] = mod
+    sys.modules["gui_v47"] = mod
     spec.loader.exec_module(mod)
     return mod
 

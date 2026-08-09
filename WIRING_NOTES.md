@@ -9,6 +9,9 @@ Derived from the current source files in this repo:
 - `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v37/`
 
 Widefield note as of August 7, 2026: the widefield rig is currently using the Arduino Mega / Zaber `v36` firmware, not `v37`.
+`v37` was tried and reverted because a stop issued during a Zaber move corrupted the serial link to the
+stages; that is fixed as of 2026-08-09 (the stop is deferred until the move's polling loop releases the
+connection), together with the `D24`/`D29` position-bit-1 pin. Bench-test the stop path before a session.
 
 There are now **three rigs with three different pinouts**. The signal *meanings* are identical across all of them; only the pin numbers and the motion backend differ.
 
@@ -157,7 +160,10 @@ Pin map unchanged from `v36`. Only the `v37` logic fixes apply; no rewiring.
 - The cue has two separate outputs: `D5` is the DAQ gate, `D11` is the actual audio waveform to the amplifier. Loudness is set with the external amplifier knob, not in firmware.
 - Motion goes out over serial to the Zaber chain; there is no per-axis motor pinout as on the Teensy rigs.
 - **Closed loop.** `STOP` issues a Zaber `stop` to all three axes and then reads true positions off the encoders, so `move_aborted` carries `actual_mm` and no manual re-referencing is needed. This is the one rig where an aborted move leaves position exactly known.
-- The current widefield bench wiring should follow `v36`, including `position bit 1` on `D29`.
+- `position bit 1` is on **`D29`** (the wire was moved to D29 on the bench). `v36` and `v37` both use
+  D29; an earlier `v37` draft had it on `D24`, which is wrong twice over — the bench wire is on D29,
+  and D24 is the co-tenant's `DelayIndicatorPin` (see "Pin 24 is not safe" above). Driving D24 would
+  leave the DAQ's `spout_bit1` dead, collapsing the position codes onto `{0,1,4,5}`.
 
 ---
 
