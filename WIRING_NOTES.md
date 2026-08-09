@@ -141,7 +141,7 @@ Pin map unchanged from `v36`. Only the `v37` logic fixes apply; no rewiring.
 | `D4` | `PIN_SYNC` | output | Sync TTL to DAQ / cameras |
 | `D5` | `PIN_CUE_TTL` (gate) | output | Cue onset/offset |
 | `D6` | `PIN_TRIAL_START` | output | Trial-start TTL |
-| `D7` | `PIN_STARTSTOP_BUTTON` | input | Physical start/stop button |
+| `D7` | `PIN_STARTSTOP_BUTTON` | input | Physical start/stop button — **disabled in `v37`** (`ENABLE_STARTSTOP_BUTTON = false`); host-only start/stop, so there is no local abort |
 | `D8` | `PIN_SOLENOID` | output | Solenoid valve control |
 | `D9` | `PIN_TTL_TRIAL_STOP` | output | Trial-stop TTL at `dock_start` |
 | `D11` | `PIN_CUE_AUDIO` | output | Audio tone/PWM to amplifier |

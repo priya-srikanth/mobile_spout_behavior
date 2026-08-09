@@ -25,6 +25,13 @@ static const uint8_t PIN_SYNC = 4;
 static const uint8_t PIN_CUE_TTL = 5;         // cue/event TTL to DAQ
 static const uint8_t PIN_TRIAL_START = 6;
 static const uint8_t PIN_STARTSTOP_BUTTON = 7; // shield pushbutton on D7
+
+// The physical shield pushbutton is DISABLED: sessions start and stop from the host
+// only, so the button cannot start or halt a task. Gated inside updateButton() rather
+// than at its call sites, so every path is covered (main loop, reward-valve wait).
+// NOTE: with this false there is no LOCAL abort -- if the host link drops mid-session
+// nothing on the bench can stop the stages. Flip to true to restore the button.
+static const bool ENABLE_STARTSTOP_BUTTON = false;
 static const uint8_t PIN_SOLENOID = 8;        // active solenoid output
 static const uint8_t PIN_TTL_TRIAL_STOP = 9;  // trial-stop TTL to DAQ
 static const uint8_t PIN_TTL_POS0 = 23;
@@ -1261,11 +1268,10 @@ void serviceDuringZaberWait() {
   updateTTLPulses();
   updateLick();
   updateSync();
-  // updateButton() is deliberately NOT called here. It would make the physical
-  // start/stop button live DURING a move (it is edge-detected, so a press+release
-  // inside a multi-second Zaber move is otherwise missed) -- but the button must not
-  // be able to halt a running task. Stop during a session goes through the host STOP
-  // command; the button is serviced from loop() between moves.
+  // updateButton() is deliberately NOT called here: the physical button must not be
+  // able to halt a running task. It is disabled outright anyway
+  // (ENABLE_STARTSTOP_BUTTON), so this is belt-and-braces -- re-enabling the button
+  // should not silently make it live mid-move as well.
 }
 
 bool zWaitIdle(const ZAxis& axis) {
@@ -1444,6 +1450,7 @@ bool consumeLickOnset() {
 }
 
 void updateButton() {
+  if (!ENABLE_STARTSTOP_BUTTON) return;   // button does nothing; host-only start/stop
   bool level = digitalRead(PIN_STARTSTOP_BUTTON); // HIGH unpressed due shield pullup
   uint32_t now = millis();
   if (level != buttonPrev && now - buttonLastEdgeMs >= BUTTON_DEBOUNCE_MS) {
