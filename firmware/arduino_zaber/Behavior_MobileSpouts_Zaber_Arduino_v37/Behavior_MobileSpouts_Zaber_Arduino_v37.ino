@@ -1145,6 +1145,7 @@ volatile bool inZaberWait = false;
 volatile bool stagesStopPending = false;
 
 void requestStopStages();
+void closeTrialAndCueGates();
 
 // ---------- Cue / reward ----------
 void playCue() {
@@ -1159,6 +1160,18 @@ void playCue() {
 void cueOnly() {
   playCue();   // cue gate is driven inside playCue()
   emitEvent("cue_only");
+}
+
+// Force every level-held output back to its inactive state. Called on STOP so an
+// aborted trial can never strand the cue gate HIGH: since v37 the cue TTL spans the
+// tone (pulsePin with cue.duration_ms), so without this a stop mid-cue leaves the DAQ
+// cue line high for the remainder of that duration. Ported from the Teensy rigs, which
+// have guarded this since v37. NB the Zaber's trial TTLs are short pulses, not gates,
+// so they are left to updateTTLPulses() -- clearing them here would truncate a live pulse.
+void closeTrialAndCueGates() {
+  noTone(PIN_CUE_AUDIO);
+  digitalWrite(PIN_CUE_TTL, LOW);
+  pulseEndCue = 0;
 }
 
 void openRewardValve(uint32_t durMs, bool bypassHold=false) {
@@ -1242,6 +1255,7 @@ void zRefreshAllAxisPosMM() {
 // Zaber wait -- see inZaberWait above.
 void requestStopStages() {
   abortMotion = true;
+  closeTrialAndCueGates();   // immediate: a digitalWrite, safe even inside a Zaber wait
   if (inZaberWait) {
     stagesStopPending = true;   // deferred: moveAxisAbsMM issues it once the wait returns
     return;

@@ -1,16 +1,62 @@
 # Release Notes
 
-## Current export — mixed firmware versions, GUI `v44`
+## Current export — mixed firmware versions, GUI `v47`
 
-- GUI: `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v44.py` (unchanged)
+- GUI: `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v47.py` — **use this one on all rigs**
 - 2pRAM Teensy / SMC02: `firmware/teensy_smc02/Behavior_MobileSpouts_2pRAM_Teensy_v37/`
 - GB219 Teensy / SMC02: `firmware/teensy_smc02/Behavior_MobileSpouts_GB219_Teensy_v37/`
 - Widefield Mega / Zaber: `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v36/`
 - Bench utility: `tools/LickScan_Teensy/`
 
-As of August 7, 2026, the widefield rig is intentionally staying on Arduino Mega / Zaber `v36`, not `v37`.
+As of August 7, 2026, the widefield rig is intentionally staying on Arduino Mega / Zaber `v36`, not `v37`;
+the `v37` faults that caused that (see "v37 fixes, 2026-08-09" below) are now fixed but not yet bench-tested.
 
 **The serial protocol is unchanged from `v36`.** Every command, config key, event name and response string is identical, so GUI `v44` drives all three `v37` builds with no modification.
+
+---
+
+## GUI v47 — trial_start closes the previous trial's row (2026-08-09)
+
+**All three rigs. Use `v47`.** `v46` and earlier wrote the NEXT trial's `pos_idx` into `trials.csv`
+on every trial whose position changed — ~15% of trials, every session, `v40`..`v46`.
+
+The firmware emits `trial_start` before `totalTrials++`, so it reports the PREVIOUS trial's id,
+which is the id already on the open row; the row was therefore never closed, and the position
+fields were overwritten with the new trial's position. A `trial_start` now always finalizes the
+open row. Same lag exists on all three rigs' firmware, so all three were affected.
+
+The corruption is a uniform one-trial shift (`gui[N] == true[N+1]`), so **existing logs are
+invertible**: `true[N] = gui[N-1]`, first trial unrecoverable, last row uncorrupted as a check.
+
+Row counts are unchanged in practice — scored rows (hit XOR miss) are still one per trial. Not
+fixed: `trial_id` still lags the device trial number by one, and each trial still yields an
+unscored `trial_start` row; both need `totalTrials++` moved ahead of the emit in firmware.
+
+`v46` is kept exactly as it shipped. Regression tests: `tests/test_trial_logging.py`.
+
+---
+
+## v37 fixes, Arduino Mega / Zaber only (2026-08-09)
+
+Applied in place to `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v37/`. **Not yet
+bench-tested** — verify STOP mid-move, then confirm a later `GET`/move still reports correct
+positions, before running a session.
+
+- **`PIN_TTL_POS1` 24 → 29.** The bench wire is on `D29`; `D24` is the co-tenant's
+  `DelayIndicatorPin`. On `D24` the DAQ's `spout_bit1` never toggles and position codes collapse
+  onto `{0,1,4,5}`.
+- **STOP no longer corrupts the Zaber serial link.** This is what made `v37` unusable. The link is
+  request/response and `zWaitIdle()` blocks for a `get pos` reply, but `handleSerialDuringMotionWait()`
+  runs from inside that loop — so a STOP mid-move issued 3×`stop` + 3×`get pos` re-entrantly and
+  every reply thereafter matched the wrong request. A stop requested during a wait now only sets a
+  flag; the move path issues it once the connection is free. The abort feature is unchanged.
+- **Physical start/stop button disabled** (`ENABLE_STARTSTOP_BUTTON = false`) — host-only start/stop.
+  Note this leaves no local abort if the host link drops.
+- **`closeTrialAndCueGates()` ported from the Teensy rigs** — STOP now forces the cue gate LOW
+  instead of leaving the DAQ cue line high for the rest of `cue.duration_ms`.
+
+The Teensy `v37` builds need no changes: their pinouts are correct, they have no physical button, and
+their stop path sets a flag without touching the stages, so the re-entrancy fault cannot occur.
 
 ---
 
