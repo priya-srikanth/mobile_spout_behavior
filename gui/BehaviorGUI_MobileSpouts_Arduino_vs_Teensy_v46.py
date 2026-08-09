@@ -491,10 +491,25 @@ class SessionLogger:
             return
         event_name = str(row.get("event_name", "") or "")
         if event_name == "trial_start":
-            if self._current_trial and self._normalize_trial_id(self._current_trial.get("trial_id", "")) != trial_id:
+            # A trial_start ALWAYS begins a new trial row, whatever trial id the device reports.
+            #
+            # The firmware emits trial_start BEFORE `totalTrials++`, so it carries the PREVIOUS
+            # trial's id, while that same trial's cue/hit/reward events (emitted after the
+            # increment) carry id+1. In events.csv:
+            #     trial_start    trial_id=0     <- trial 1 begins
+            #     cue/reward/hit trial_id=1     <- trial 1's body
+            #     trial_start    trial_id=1     <- trial 2 begins, SAME id as the open row
+            # so finalizing only when the ids DIFFER left the previous trial's row open, and the
+            # position lines below then overwrote its pos_idx / pos_name / pos_dist_mm_after_trial
+            # with the NEW trial's position -- the device sets currentTrialPos immediately before
+            # emitting trial_start. That mislabelled the position on every trial whose position
+            # changed (~15% of trials), always to the NEXT trial's position.
+            #
+            # Locking the position fields instead would NOT fix it: the offending trial_start
+            # carries an explicit `pos=` too. Closing the row is what makes it correct.
+            if self._current_trial is not None:
                 self._finalize_trial(force=True)
-            if self._current_trial is None:
-                self._current_trial = self._trial_template(trial_id, row)
+            self._current_trial = self._trial_template(trial_id, row)
         elif self._current_trial is None:
             self._current_trial = self._trial_template(trial_id, row)
         elif self._normalize_trial_id(self._current_trial.get("trial_id", "")) != trial_id:
