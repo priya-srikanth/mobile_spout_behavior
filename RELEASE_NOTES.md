@@ -15,6 +15,32 @@ the `v37` faults that caused that (see "v37 fixes, 2026-08-09" below) are now fi
 
 ---
 
+## Firmware v38 — interrupt-driven lick capture (2026-08-10, all three rigs; NOT yet bench-tested)
+
+`firmware/**/*_v38/` adds a hardware-interrupt lick-onset path to all three builds (Zaber Arduino,
+GB219 Teensy, 2pRAM Teensy).
+
+**Problem (v37 and earlier).** Lick detection was polled once per main-loop iteration, gated by a 20 ms
+*lockout* debounce (it only accepted a state change if ≥20 ms had passed since the last accepted change —
+not a stability wait). So a brief/fast contact, or any contact that fell in a loop-poll gap, could produce
+**no `lick_on` at all**, and the ENL was therefore never reset on it. Measured against the widefield DAQ
+(continuous 5 kHz on the raw analog), the firmware missed **~16 % of trials' final-window pre-cue licks**
+(PS92 8/7: 70/430 cues) — all **full 0 V contacts**, so this was never a threshold problem, and the GUI
+logged them correctly whenever the firmware emitted them (the misses simply never became events).
+
+**Fix.** A `CHANGE` interrupt on the lick pin (`digitalPinToInterrupt`, works on Uno/Mega and every Teensy
+pin) latches every onset the instant it happens — immune to loop / serial / Zaber / motion latency and to
+the debounce lockout. `updateLick()` drains the captured onsets to emit `lick_on` and arm the ENL reset;
+the release/offset stays on the debounced poll. Serial protocol, pinout, and config keys are **unchanged**,
+so GUI `v47` drives it with no modification.
+
+**Behavioral note.** This makes the ENL strictly enforced, so it resets more often (animals already reset it
+~8–9×/trial). With a very impulsive animal the ENL may take longer to clear — bench-test and watch trial
+timing before deploying, and prefer promoting **between cohorts**. On the bench, verify `lick_on` and
+`pre_cue_reset_by_lick` now fire on light/quick touches that v37 missed.
+
+---
+
 ## GUI v47 — trial_start closes the previous trial's row (2026-08-09)
 
 **All three rigs. Use `v47`.** `v46` and earlier wrote the NEXT trial's `pos_idx` into `trials.csv`
