@@ -1,8 +1,9 @@
 # Release Notes
 
-## Current export — mixed firmware versions, GUI `v47`
+## Current export — mixed firmware versions, GUI `v49`
 
-- GUI: `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v47.py` — **use this one on all rigs**
+- GUI: `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v49.py` — **use this one on all rigs**
+  (v49 = v48 + one-row-per-trial logging; see below)
 - 2pRAM Teensy / SMC02: `firmware/teensy_smc02/Behavior_MobileSpouts_2pRAM_Teensy_v37/`
 - GB219 Teensy / SMC02: `firmware/teensy_smc02/Behavior_MobileSpouts_GB219_Teensy_v37/`
 - Widefield Mega / Zaber: `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v36/`
@@ -12,6 +13,33 @@ As of August 7, 2026, the widefield rig is intentionally staying on Arduino Mega
 the `v37` faults that caused that (see "v37 fixes, 2026-08-09" below) are now fixed but not yet bench-tested.
 
 **The serial protocol is unchanged from `v36`.** Every command, config key, event name and response string is identical, so GUI `v44` drives all three `v37` builds with no modification.
+
+---
+
+## GUI v49 — one row per trial in `trials.csv` (2026-08-14)
+
+**Problem.** `trials.csv` held roughly TWO rows per trial. PS92 2026-08-12 wrote 160 rows for 81
+trials in one segment, and 563 rows for 283 trials across the day. Nothing downstream computed a wrong
+number — every consumer selects scored rows (`hit` XOR `miss`) — but anyone reading row counts read
+double the real trial count, and the widefield analysis did exactly that, reporting "563 trials" for a
+283-trial session before it was caught.
+
+**Cause — a consequence of the v47 fix, not a regression in it.** The firmware emits `trial_start`
+BEFORE `totalTrials++`, so it carries the PREVIOUS trial's id while that trial's own cue/hit/reward
+events carry id+1. v47 correctly closes the open row on every `trial_start` (that is what fixed the
+`pos_idx` mislabelling), but closing it necessarily emits a placeholder row that only ever received
+position and timing — never a cue, lick, hit, miss or reward.
+
+**Fix.** `_finalize_trial` drops a row that never received any of `hit` / `miss` / `reward_delivered` /
+`lick_in_response_window`. Nothing is lost: `events.csv` retains every `trial_start` in full with its
+own position and timestamp, and an aborted trial was already excluded by every consumer.
+
+**Unchanged:** the v47 position guarantee, the trial ids, and every column. `tests/test_trial_logging.py`
+(v47 invariants) and `tests/test_trial_logging_v49.py` (one row per trial, a miss still written, an
+aborted trial omitted) both pass.
+
+**Note for analysis:** sessions recorded on v40–v48 keep the doubled rows. Count trials by filtering
+`hit` XOR `miss`, never by row count.
 
 ---
 
