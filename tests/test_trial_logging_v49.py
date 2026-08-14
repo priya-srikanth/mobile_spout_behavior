@@ -105,7 +105,7 @@ def test_row_has_outcome_treats_falsey_strings_as_absent(logger, gui):
 # --------------------------------------------------------------- provenance stamped in the snapshot
 
 def test_gui_version_is_parsed_from_the_filename(gui):
-    assert gui.SessionLogger._gui_version() in ("v49", "unknown")
+    assert gui.BaseApp._gui_version() in ("v49", "unknown")
 
 
 def test_firmware_version_is_unknown_rather_than_guessed(gui):
@@ -116,7 +116,7 @@ def test_firmware_version_is_unknown_rather_than_guessed(gui):
     class _Stub:
         device_config_cache = {"lick.debug": "0"}
         latest_status = {}
-    assert gui.SessionLogger._device_firmware_version(_Stub()) == "unknown"
+    assert gui.BaseApp._device_firmware_version(_Stub()) == "unknown"
 
 
 def test_firmware_version_is_read_once_the_device_reports_it(gui):
@@ -125,4 +125,4 @@ def test_firmware_version_is_read_once_the_device_reports_it(gui):
     class _Stub:
         device_config_cache = {"device.fw_version": "Zaber_Arduino_v39"}
         latest_status = {}
-    assert gui.SessionLogger._device_firmware_version(_Stub()) == "Zaber_Arduino_v39"
+    assert gui.BaseApp._device_firmware_version(_Stub()) == "Zaber_Arduino_v39"
