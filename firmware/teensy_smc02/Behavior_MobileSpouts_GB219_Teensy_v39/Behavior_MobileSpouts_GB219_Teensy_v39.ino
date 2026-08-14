@@ -452,9 +452,6 @@ volatile bool abortMotion = false;
 bool lickSensingEnabled = false;
 bool lickCurrent = false;
 volatile bool lickOnsetLatched = false;
-// v38: lick-onset interrupt state (written by lickISR()).
-volatile uint8_t  isrOnsetPending = 0;   // onsets captured by the ISR, drained in updateLick()
-volatile uint32_t isrLastOnsetMs  = 0;   // ISR-side refractory anchor
 
 inline void clearLatchedLick() {
   lickOnsetLatched = false;
@@ -514,7 +511,6 @@ void serviceWait(uint32_t ms);
 void updateTTLPulses();
 void updateSync();
 void updateLick();
-void lickISR();          // v38: lick-onset interrupt (defined alongside updateLick)
 void updateCue();
 void handleSerial();
 bool handleSerialDuringBlocking();
@@ -664,7 +660,6 @@ void setup() {
 
 
   pinMode(PIN_LICK_LEFT_IN, LICK_PIN_MODE);
-  attachInterrupt(digitalPinToInterrupt(selectedLickInputPin()), lickISR, CHANGE);  // v38: capture every lick onset
 
   syncAdaptivePositionsFromGlobal();
   resetAdaptiveDistances();
