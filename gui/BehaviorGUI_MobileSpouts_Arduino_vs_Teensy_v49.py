@@ -1,5 +1,6 @@
 import csv
 import json
+import re
 import math
 import queue
 import threading
@@ -4659,6 +4660,30 @@ class BaseApp(tk.Tk):
         except Exception:
             return "unknown"
 
+    @staticmethod
+    def _gui_version() -> str:
+        """`v49` from this file's own name, or `unknown` if it was renamed."""
+        m = re.search(r"_(v\d+)\.py$", Path(__file__).name)
+        return m.group(1) if m else "unknown"
+
+    def _device_firmware_version(self) -> str:
+        """Firmware version as REPORTED BY THE DEVICE, or `unknown`.
+
+        The firmware does not yet emit one (v36 and v38 are indistinguishable from their config dump),
+        so this reads whichever of the plausible keys appears and otherwise records `unknown` honestly
+        rather than guessing. Add `emitConfigKV("device.fw_version", ...)` on the next firmware build
+        and this starts populating with no GUI change.
+        """
+        cache = self.device_config_cache if isinstance(self.device_config_cache, dict) else {}
+        for key in ("device.fw_version", "device.firmware_version", "device.version", "fw_version"):
+            if cache.get(key):
+                return str(cache[key])
+        status = self.latest_status if isinstance(self.latest_status, dict) else {}
+        for key in ("fw_version", "firmware", "version"):
+            if status.get(key):
+                return str(status[key])
+        return "unknown"
+
     def _session_manifest_payload(self, gui_cfg: dict):
         return {
             "app_title": APP_TITLE,
@@ -4666,6 +4691,15 @@ class BaseApp(tk.Tk):
             "gui_file": Path(__file__).name,
             "notes": self.session_notes_var.get().strip(),
             "device_snapshot": {
+                # Stamp WHAT WAS RUNNING into the snapshot, not just the manifest. Analysis reads
+                # device_snapshot_start.json to decide whether a session's behaviour is explicable by a
+                # known firmware/GUI issue, and on 2026-08-14 that question could not be answered for
+                # 8/13: the GUI version was recorded (in the manifest) but the FIRMWARE version was
+                # nowhere, and v36 and v38 emit identical config keys, so which one ran -- and
+                # therefore whether pre-cue lick misses were expected -- was unrecoverable.
+                "gui_file": Path(__file__).name,
+                "gui_version": self._gui_version(),
+                "firmware_version": self._device_firmware_version(),
                 "latest_status": dict(self.latest_status) if isinstance(self.latest_status, dict) else {},
                 "config_cache": dict(self.device_config_cache),
             },

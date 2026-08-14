@@ -100,3 +100,29 @@ def test_row_has_outcome_treats_falsey_strings_as_absent(logger, gui):
     assert not has({})
     for k in ("hit", "miss", "reward_delivered", "lick_in_response_window"):
         assert has({k: "1"}), k
+
+
+# --------------------------------------------------------------- provenance stamped in the snapshot
+
+def test_gui_version_is_parsed_from_the_filename(gui):
+    assert gui.SessionLogger._gui_version() in ("v49", "unknown")
+
+
+def test_firmware_version_is_unknown_rather_than_guessed(gui):
+    """The firmware does not report a version yet (v36 and v38 emit identical config keys), so the
+    honest value is `unknown` -- never an inferred one. On 2026-08-14 this exact gap made it
+    impossible to say which firmware ran on 8/13, and therefore whether the pre-cue lick misses seen
+    in the rasters were expected behaviour."""
+    class _Stub:
+        device_config_cache = {"lick.debug": "0"}
+        latest_status = {}
+    assert gui.SessionLogger._device_firmware_version(_Stub()) == "unknown"
+
+
+def test_firmware_version_is_read_once_the_device_reports_it(gui):
+    """Adding emitConfigKV("device.fw_version", ...) to a firmware build must start populating this
+    with NO further GUI change."""
+    class _Stub:
+        device_config_cache = {"device.fw_version": "Zaber_Arduino_v39"}
+        latest_status = {}
+    assert gui.SessionLogger._device_firmware_version(_Stub()) == "Zaber_Arduino_v39"
