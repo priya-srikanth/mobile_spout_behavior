@@ -1541,21 +1541,6 @@ void updateCue() {
 // ============================================================
 // Lick detection
 // ============================================================
-// v38: a pin-change interrupt latches every lick ONSET the instant it happens, so no lick is
-// lost to loop/serial/motion latency or the v37 debounce lockout (which dropped brief/fast
-// contacts -> ~16% of real ENL licks the DAQ recorded never reset the ENL). Serial is unsafe in
-// an ISR, so the ISR only counts onsets; updateLick() (main loop) drains them to emit lick_on and
-// arm the ENL latch. Attached on CHANGE + level test so it honours lick.active_low at runtime.
-void lickISR() {
-  bool pressed = (digitalRead(selectedLickInputPin()) == LOW);
-  if (!(lickCfg.activeLow ? pressed : !pressed)) return;   // onset edge only
-  uint32_t now = millis();
-  if (now - isrLastOnsetMs >= (uint32_t)lickCfg.refractoryMs) {
-    isrLastOnsetMs = now;
-    if (isrOnsetPending < 255) isrOnsetPending++;
-  }
-}
-
 void updateLick() {
   bool rawPressed = (digitalRead(selectedLickInputPin()) == LOW);
   bool currentState = lickCfg.activeLow ? rawPressed : !rawPressed;
@@ -1563,28 +1548,25 @@ void updateLick() {
 
   uint32_t now = millis();
 
-  // v38: ONSET from the ISR (never missed) -- drain every captured onset.
-  uint8_t pending;
-  noInterrupts(); pending = isrOnsetPending; isrOnsetPending = 0; interrupts();
-  while (pending) {
-    pending--;
-    if (!lickCurrent) { lickCurrent = true; lastLickChangeMs = now; }
-    emitEvent("lick_on");
-    if (autoRewardsHeld) {
-      autoRewardsHeld = false;
-      refreshRewardHoldState(false);
+  if (currentState != lickCurrent) {
+    if (now - lastLickChangeMs >= lickCfg.debounceMs) {
+      bool prevState = lickCurrent;
+      lickCurrent = currentState;
+      lastLickChangeMs = now;
+      if (lickCurrent && !prevState) {
+        emitEvent("lick_on");
+      } else if (!lickCurrent && prevState) {
+        emitEvent("lick_off");
+      }
+      if (lickCurrent && autoRewardsHeld) {
+        autoRewardsHeld = false;
+        refreshRewardHoldState(false);
+      }
+      if (lickCurrent && lickSensingEnabled && (now - lastLickOnsetMs >= lickCfg.refractoryMs)) {
+        lickOnsetLatched = true;
+        lastLickOnsetMs = now;
+      }
     }
-    if (lickSensingEnabled) {
-      lickOnsetLatched = true;
-      lastLickOnsetMs = now;
-    }
-  }
-
-  // OFFSET (release) from the poll, debounced.
-  if (!currentState && lickCurrent && (now - lastLickChangeMs >= lickCfg.debounceMs)) {
-    lickCurrent = false;
-    lastLickChangeMs = now;
-    emitEvent("lick_off");
   }
 
   if (lickCfg.debug) {
