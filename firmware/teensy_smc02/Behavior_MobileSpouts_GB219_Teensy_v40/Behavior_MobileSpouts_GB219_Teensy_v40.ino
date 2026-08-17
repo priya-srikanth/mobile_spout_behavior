@@ -45,6 +45,8 @@ enum RewardTriggerType : uint8_t;
 //      replaced with serviced waits, so sync pulses no longer drop out.
 // ============================================================
 
+static const char* DEVICE_FW_VERSION = "GB219_Teensy_v40";
+
 // -----------------------------
 // RIG SELECT  -  set exactly one to 1
 // -----------------------------
@@ -2158,6 +2160,7 @@ bool shouldStopBeforeStartingNextBlock() {
 }
 
 void emitConfig() {
+  emitConfigKV("device.fw_version", DEVICE_FW_VERSION);
   emitConfigKV("task.reward_ms", cfg.rewardOpenMs);
   emitConfigKV("task.reward_ul", cfg.estimatedRewardUL, 3);
   emitConfigKV("task.water_limit_ul", cfg.sessionWaterLimitUL, 3);

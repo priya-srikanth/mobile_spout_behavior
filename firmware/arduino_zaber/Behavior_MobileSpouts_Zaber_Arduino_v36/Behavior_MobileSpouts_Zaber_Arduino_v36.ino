@@ -13,6 +13,8 @@
 // One digital lick input, one active solenoid, one movable spout
 // ============================================================
 
+static const char* DEVICE_FW_VERSION = "Zaber_Arduino_v36";
+
 // ---------- Zaber shield ----------
 using namespace Zaber;
 Shield shield(ZABERSHIELD_ADDRESS_AA);
@@ -936,6 +938,7 @@ void emitStats() {
 }
 
 void emitConfig() {
+  emitConfigKV("device.fw_version", DEVICE_FW_VERSION);
   emitConfigKV("backend.type", "mega_zaber");
   emitConfigKV("task.reward_ms", cfg.rewardOpenMs);
   emitConfigKV("task.reward_ul", cfg.estimatedRewardUL, 3);
