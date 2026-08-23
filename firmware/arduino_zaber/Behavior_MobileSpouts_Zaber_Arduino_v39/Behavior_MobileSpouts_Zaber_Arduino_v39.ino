@@ -532,7 +532,10 @@ void updateAutoRewardHoldFromMissStreak(bool emitCfg=true) {
     autoRewardsHeld = true;
     bool rawPressed = (digitalRead(PIN_LICK_IN) == LOW);
     bool lickLineActive = lickCfg.activeLow ? rawPressed : !rawPressed;
-    if (lickLineActive) autoRewardsHeld = false;
+    if (lickLineActive) {
+      autoRewardsHeld = false;
+      consecutiveMisses = 0;
+    }
     refreshRewardHoldState(false);
   }
 }
@@ -1472,6 +1475,7 @@ void updateLick() {
     emitEvent("lick_on");
     if (autoRewardsHeld) {
       autoRewardsHeld = false;
+      consecutiveMisses = 0;
       refreshRewardHoldState(false);
     }
     if (lickSensingEnabled) {

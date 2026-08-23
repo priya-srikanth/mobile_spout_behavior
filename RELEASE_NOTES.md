@@ -62,6 +62,9 @@ This only bypasses the AUTO hold path. Manual holds still stay active until expl
 - **AUTO reward hold stays close to `v38` lick behavior.** `updateLick()` is intentionally kept identical
   to `v38`; the added level check only prevents AUTO hold from engaging if the lick input is already active
   when the hold threshold is reached. Manual holds are unchanged.
+- **Lick release of AUTO hold now resets the miss streak.** If AUTO hold is cleared by a detected lick, or
+  prevented because the lick line is already active at the miss threshold, `miss_streak` is reset to zero so
+  the next single missed trial does not immediately re-engage reward hold.
 - **Cumulative raster marker priority changed in GUI `v50`.** Auto/free/manual rewards are shown as teal
   rings even if a later lick makes the trial count as a hit. Contingent/earned hits remain green, misses red.
 - **Auto STATUS poll is saved, but deferred during serial connection.** The checkbox and interval are stored
