@@ -4511,7 +4511,15 @@ class BaseApp(tk.Tk):
         if isinstance(path_or_name, Path):
             name = path_or_name.stem
         else:
-            name = str(path_or_name).strip() or "default"
+            raw = str(path_or_name).strip()
+            if not raw:
+                name = "default"
+            else:
+                pathish = Path(raw)
+                if pathish.suffix.lower() == ".json" or ("\\" in raw) or ("/" in raw):
+                    name = pathish.stem or raw
+                else:
+                    name = raw
         self.current_mouse_profile_var.set(name)
 
     def save_mouse_profile(self):
@@ -4857,7 +4865,7 @@ class BaseApp(tk.Tk):
             profile_name = ""
             if isinstance(data, dict):
                 profile_name = str(data.get("mouse_profile_name", "")).strip()
-            self._set_current_mouse_profile(profile_name or path)
+            self._set_current_mouse_profile(profile_name or Path(path).stem)
             self._log_local(f"[GUI] Loaded mouth/dock/safe_z from config {path}")
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Load motion coordinates failed:\n{e}")
