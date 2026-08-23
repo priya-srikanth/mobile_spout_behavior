@@ -1245,7 +1245,7 @@ class BaseApp(tk.Tk):
         cumf.rowconfigure(1, weight=1)
         ttk.Label(
             cumf,
-            text="Green dot = hit / earned reward   |   Red dot = miss   |   Teal ring = free, auto-delay, or manual reward",
+            text="Teal ring = reward delivered / outcome pending   |   Green dot = hit   |   Red dot = miss",
             justify="left",
             wraplength=1100,
         ).grid(row=0, column=0, sticky="w", pady=(0,6))
@@ -3027,15 +3027,15 @@ class BaseApp(tk.Tk):
                 trial["miss_pos_idx"] = trial["pos_idx"]
 
         for trial in trials.values():
-            if trial["free_ts"] is not None:
-                pos_idx = trial["free_pos_idx"] if trial["free_pos_idx"] is not None else trial["pos_idx"]
-                markers.append((trial["free_ts"], "free", pos_idx))
-            elif trial["hit_ts"] is not None:
+            if trial["hit_ts"] is not None:
                 pos_idx = trial["hit_pos_idx"] if trial["hit_pos_idx"] is not None else trial["pos_idx"]
                 markers.append((trial["hit_ts"], "earned", pos_idx))
             elif trial["miss_ts"] is not None:
                 pos_idx = trial["miss_pos_idx"] if trial["miss_pos_idx"] is not None else trial["pos_idx"]
                 markers.append((trial["miss_ts"], "miss", pos_idx))
+            elif trial["free_ts"] is not None:
+                pos_idx = trial["free_pos_idx"] if trial["free_pos_idx"] is not None else trial["pos_idx"]
+                markers.append((trial["free_ts"], "free", pos_idx))
         markers.sort(key=lambda item: item[0])
         return markers
 

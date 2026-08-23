@@ -65,8 +65,9 @@ This only bypasses the AUTO hold path. Manual holds still stay active until expl
 - **Lick release of AUTO hold now resets the miss streak.** If AUTO hold is cleared by a detected lick, or
   prevented because the lick line is already active at the miss threshold, `miss_streak` is reset to zero so
   the next single missed trial does not immediately re-engage reward hold.
-- **Cumulative raster marker priority changed in GUI `v50`.** Auto/free/manual rewards are shown as teal
-  rings even if a later lick makes the trial count as a hit. Contingent/earned hits remain green, misses red.
+- **Cumulative raster outcome priority restored in GUI `v50`.** Auto/free/manual rewards initially appear
+  as teal rings while the trial outcome is pending, then convert to green for hits or red for misses once
+  the response-window outcome is known.
 - **Auto STATUS poll is saved, but deferred during serial connection.** The checkbox and interval are stored
   in the GUI config. During connect/handshake the GUI temporarily disables polling, then restores the saved
   state once the Arduino/Teensy is ready or the handshake times out, preventing saved polling from disrupting
