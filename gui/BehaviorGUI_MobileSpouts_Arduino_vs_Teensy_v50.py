@@ -668,6 +668,7 @@ class BaseApp(tk.Tk):
         self._connect_waiting = False
         self._connect_attempt = 0
         self._connect_after_id = None
+        self._autopoll_restore_after_connect = None
         self._last_probe_port = ""
         self._last_probe_time = 0.0
         self.ports = {}
@@ -1959,6 +1960,8 @@ class BaseApp(tk.Tk):
             messagebox.showerror(APP_TITLE, "Choose a serial port first.")
             return
         try:
+            self._autopoll_restore_after_connect = bool(self.autopoll_var.get())
+            self.autopoll_var.set(False)
             backend = self.backend_var.get() if hasattr(self, "backend_var") else ""
             self.client.connect(port, self.baud_var.get_int(DEFAULT_BAUD), backend=backend)
             if backend in ("teensy_smc02", "mega_zaber"):
@@ -1978,6 +1981,9 @@ class BaseApp(tk.Tk):
             if recently_probed:
                 # Trust a very recent successful probe on the same port instead of forcing a second fragile handshake.
                 self._connect_waiting = False
+                if self._autopoll_restore_after_connect:
+                    self.autopoll_var.set(True)
+                self._autopoll_restore_after_connect = None
                 self.status_line_var.set(f"Connected to {port}; recent probe succeeded")
                 self._log_local("[GUI] Recent probe succeeded on this port; skipping blocking handshake.")
                 self.after(1200, lambda: self.send("GET kind=status"))
@@ -1985,6 +1991,9 @@ class BaseApp(tk.Tk):
                 # Arduino Mega often resets on serial-open. Retry handshake until any non-empty line arrives.
                 self._connect_after_id = self.after(1800, self._post_connect_handshake)
         except Exception as e:
+            if self._autopoll_restore_after_connect is not None:
+                self.autopoll_var.set(bool(self._autopoll_restore_after_connect))
+                self._autopoll_restore_after_connect = None
             messagebox.showerror(APP_TITLE, f"Failed to connect:\n{e}")
 
     def _post_connect_handshake(self):
@@ -2006,6 +2015,9 @@ class BaseApp(tk.Tk):
             else:
                 self._connect_waiting = False
                 self._connect_after_id = None
+                if self._autopoll_restore_after_connect:
+                    self.autopoll_var.set(True)
+                self._autopoll_restore_after_connect = None
                 port = self.client.connected_port or self.port_var.get().strip()
                 self.status_line_var.set(
                     f"Connected to {port}; no ready reply seen yet. You can try commands or press reset once."
@@ -2021,6 +2033,9 @@ class BaseApp(tk.Tk):
             pass
         self._connect_after_id = None
         self.client.disconnect()
+        if self._autopoll_restore_after_connect is not None:
+            self.autopoll_var.set(bool(self._autopoll_restore_after_connect))
+            self._autopoll_restore_after_connect = None
         self._reset_apply_tracking()
         self.status_line_var.set("Disconnected")
         self._log_local("[GUI] Disconnected")
@@ -2141,6 +2156,9 @@ class BaseApp(tk.Tk):
         except Exception:
             pass
         self._connect_after_id = None
+        if self._autopoll_restore_after_connect:
+            self.autopoll_var.set(True)
+        self._autopoll_restore_after_connect = None
         port = self.client.connected_port or self.port_var.get().strip()
         self.status_line_var.set(f"Connected to {port}; device ready")
         self._log_local(f"[GUI] Device ready: {line}")
