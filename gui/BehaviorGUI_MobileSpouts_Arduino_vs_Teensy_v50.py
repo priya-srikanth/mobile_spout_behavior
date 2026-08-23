@@ -2998,15 +2998,15 @@ class BaseApp(tk.Tk):
                 trial["miss_pos_idx"] = trial["pos_idx"]
 
         for trial in trials.values():
-            if trial["hit_ts"] is not None:
+            if trial["free_ts"] is not None:
+                pos_idx = trial["free_pos_idx"] if trial["free_pos_idx"] is not None else trial["pos_idx"]
+                markers.append((trial["free_ts"], "free", pos_idx))
+            elif trial["hit_ts"] is not None:
                 pos_idx = trial["hit_pos_idx"] if trial["hit_pos_idx"] is not None else trial["pos_idx"]
                 markers.append((trial["hit_ts"], "earned", pos_idx))
             elif trial["miss_ts"] is not None:
                 pos_idx = trial["miss_pos_idx"] if trial["miss_pos_idx"] is not None else trial["pos_idx"]
                 markers.append((trial["miss_ts"], "miss", pos_idx))
-            elif trial["free_ts"] is not None:
-                pos_idx = trial["free_pos_idx"] if trial["free_pos_idx"] is not None else trial["pos_idx"]
-                markers.append((trial["free_ts"], "free", pos_idx))
         markers.sort(key=lambda item: item[0])
         return markers
 
@@ -4601,11 +4601,6 @@ class BaseApp(tk.Tk):
             if CONFIG_PATH.exists():
                 data = json.loads(CONFIG_PATH.read_text())
                 self._apply_config_dict(data)
-        except Exception:
-            pass
-        # Keep auto STATUS polling off on startup so connection handshakes are not interrupted.
-        try:
-            self.autopoll_var.set(False)
         except Exception:
             pass
 
