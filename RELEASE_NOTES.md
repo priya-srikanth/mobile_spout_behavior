@@ -1,18 +1,55 @@
 # Release Notes
 
-## Current export — mixed firmware versions, GUI `v49`
+## Current export — mixed firmware versions, GUI `v50`
 
-- GUI: `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v49.py` — **use this one on all rigs**
-  (v49 = v48 + one-row-per-trial logging; see below)
+- GUI: `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v50.py` — stable `v47`-line build with the fixes below
 - 2pRAM Teensy / SMC02: `firmware/teensy_smc02/Behavior_MobileSpouts_2pRAM_Teensy_v37/`
 - GB219 Teensy / SMC02: `firmware/teensy_smc02/Behavior_MobileSpouts_GB219_Teensy_v37/`
 - Widefield Mega / Zaber: `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v36/`
+- Alternate Widefield Mega / Zaber build: `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v39/`
 - Bench utility: `tools/LickScan_Teensy/`
 
 As of August 7, 2026, the widefield rig is intentionally staying on Arduino Mega / Zaber `v36`, not `v37`;
 the `v37` faults that caused that (see "v37 fixes, 2026-08-09" below) are now fixed but not yet bench-tested.
 
 **The serial protocol is unchanged from `v36`.** Every command, config key, event name and response string is identical, so GUI `v44` drives all three `v37` builds with no modification.
+
+---
+
+## GUI v50 — stable `v47` line with trial-log and reward-hold fixes (2026-08-23)
+
+This GUI intentionally starts from the `v47` line because that is the branch behaving reliably on the
+rig, rather than layering more changes onto the newer `v48`/`v49` line.
+
+- **One row per trial in `trials.csv`.** `trial_start` rows are now normalized onto the ACTUAL trial
+  number (`raw device trial id + 1` for `trial_start` only), so the `trial_start` placeholder and the
+  later cue/hit/miss/reward rows coalesce into a single trial record.
+- **Coordinate-only loads now refresh the displayed current profile.** Loading just mouth/dock/safe-Z
+  from a mouse profile or config updates the GUI's "current profile" display instead of leaving the old
+  profile name on screen.
+- **User-facing note matches the intended auto-hold behavior.** The help text now reflects that rewards
+  resume on any detected lick once the firmware supports that behavior.
+
+`events.csv` is unchanged: all raw events, including `trial_start`, are still written exactly as emitted
+by the device.
+
+---
+
+## Firmware v39 — any detected lick clears AUTO reward hold (2026-08-23, Arduino Mega / Zaber)
+
+`firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v39/` is based directly on `v38`
+(interrupt-driven lick onset / ENL fix) and keeps the same serial protocol, pin map, and motion logic.
+
+**Change.** If rewards were auto-held after too many missed rewarded trials, **any detected lick level**
+now clears that AUTO hold immediately. This is broader than the prior onset-only behavior: if the animal
+is already contacting the spout between trials when the hold is active, rewards resume without waiting for
+a brand-new lick edge.
+
+**Why this matters.** It lets a mouse consume residual reward between trial end and the next cue and still
+resume normal reward delivery, instead of leaving the spout empty because no fresh lick onset occurred
+after the hold engaged.
+
+This only bypasses the AUTO hold path. Manual holds still stay active until explicitly released.
 
 ---
 
