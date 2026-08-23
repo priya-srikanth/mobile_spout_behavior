@@ -171,6 +171,7 @@ class SessionLogger:
         self._latest_status = {}
         self._current_trial = None
         self._last_seen_trial_id = None
+        self._finalized_trials = []
 
     def _write_json(self, path: Path, payload: dict):
         path.write_text(json.dumps(payload, indent=2))
@@ -216,6 +217,7 @@ class SessionLogger:
         self._latest_status = {}
         self._current_trial = None
         self._last_seen_trial_id = None
+        self._finalized_trials = []
 
         self.raw_enabled = bool(raw_log_enabled)
         self.timeseries_enabled = bool(timeseries_enabled)
@@ -494,7 +496,14 @@ class SessionLogger:
         self.trials_writer.writerow({k: row.get(k, "") for k in self.TRIAL_FIELDS})
         if self.trials_fh:
             self.trials_fh.flush()
+        self._finalized_trials.append(dict(row))
         self._current_trial = None
+
+    def trial_rows_snapshot(self):
+        rows = [dict(r) for r in self._finalized_trials]
+        if self._current_trial:
+            rows.append(dict(self._current_trial))
+        return rows
 
     def _update_trial_from_event_row(self, row: dict, kv: dict):
         event_name = str(row.get("event_name", "") or "")
@@ -4669,14 +4678,46 @@ class BaseApp(tk.Tk):
     def _position_stats_rows(self):
         rows = []
         snapshot = self._current_positions_snapshot()
+        trial_rows = []
+        try:
+            trial_rows = self.session_logger.trial_rows_snapshot()
+        except Exception:
+            trial_rows = []
+        derived = {}
+        for row in trial_rows:
+            pos_token = str(row.get("pos_idx", "") or "").strip()
+            if not pos_token.lstrip("-").isdigit():
+                continue
+            pos_idx = int(pos_token)
+            if pos_idx < 0 or pos_idx >= 6:
+                continue
+            bucket = derived.setdefault(pos_idx, {"trials": 0, "hits": 0, "misses": 0, "free_rewards": 0, "dist_mm": ""})
+            bucket["trials"] += 1
+            if self._is_truthy_flag(row.get("hit", 0)):
+                bucket["hits"] += 1
+            if self._is_truthy_flag(row.get("miss", 0)):
+                bucket["misses"] += 1
+            if self._is_truthy_flag(row.get("free_reward_delivered", 0)):
+                bucket["free_rewards"] += 1
+            dist_after = str(row.get("pos_dist_mm_after_trial", "") or "").strip()
+            dist_before = str(row.get("pos_dist_mm_before_trial", "") or "").strip()
+            if dist_after:
+                bucket["dist_mm"] = dist_after
+            elif dist_before and not bucket.get("dist_mm", ""):
+                bucket["dist_mm"] = dist_before
         adapt_enabled_global = bool(self.adaptive_enabled_var.get())
         use_per_position = bool(self.adapt_use_per_position_var.get())
         for i in range(6):
             data = dict(self.position_stats.get(i, {}) or {})
+            derived_row = derived.get(i, {})
             trials = int(float(data.get("trials", 0) or 0)) if str(data.get("trials", 0)).strip() != "" else 0
             hits = int(float(data.get("hits", 0) or 0)) if str(data.get("hits", 0)).strip() != "" else 0
             misses = int(float(data.get("misses", 0) or 0)) if str(data.get("misses", 0)).strip() != "" else 0
             free_rewards = int(float(data.get("free_rewards", 0) or 0)) if str(data.get("free_rewards", 0)).strip() != "" else 0
+            trials = max(trials, int(derived_row.get("trials", 0) or 0))
+            hits = max(hits, int(derived_row.get("hits", 0) or 0))
+            misses = max(misses, int(derived_row.get("misses", 0) or 0))
+            free_rewards = max(free_rewards, int(derived_row.get("free_rewards", 0) or 0))
             hit_rate = (hits / trials) if trials > 0 else ""
             pos = snapshot.get(i, {})
             adapt_enabled = adapt_enabled_global and ((not use_per_position) or bool(self.adapt_pos_enabled_vars[i].get()))
@@ -4684,7 +4725,7 @@ class BaseApp(tk.Tk):
                 "pos_idx": i,
                 "pos_name": self.position_labels[i] if i < len(self.position_labels) else pos.get("label", f"Pos {i}"),
                 "enabled": data.get("enabled", 1 if self.pos_enabled_vars[i].get() else 0),
-                "dist_mm": data.get("dist_mm", pos.get("dist_mm", "")),
+                "dist_mm": data.get("dist_mm", derived_row.get("dist_mm", pos.get("dist_mm", ""))) or derived_row.get("dist_mm", pos.get("dist_mm", "")),
                 "trials": trials,
                 "hits": hits,
                 "misses": misses,
@@ -4698,6 +4739,11 @@ class BaseApp(tk.Tk):
         latest = dict(self.latest_status) if isinstance(self.latest_status, dict) else {}
         summary = dict(getattr(self, "summary_stats", {}) or {})
         counts = dict(getattr(self.session_logger, "event_counts", {}) or {})
+        trial_rows = []
+        try:
+            trial_rows = self.session_logger.trial_rows_snapshot()
+        except Exception:
+            trial_rows = []
 
         def pick(*keys, default=""):
             for src in (latest, summary):
@@ -4706,19 +4752,64 @@ class BaseApp(tk.Tk):
                         return src.get(key)
             return default
 
+        def _safe_int(value, default=0):
+            try:
+                text = str(value).strip()
+                if text == "":
+                    return default
+                return int(float(text))
+            except Exception:
+                return default
+
+        def _safe_float(value, default=0.0):
+            try:
+                text = str(value).strip()
+                if text == "":
+                    return default
+                return float(text)
+            except Exception:
+                return default
+
+        derived_total_trials = sum(1 for row in trial_rows if str(row.get("trial_id", "") or "").strip() != "")
+        derived_hits = sum(1 for row in trial_rows if self._is_truthy_flag(row.get("hit", 0)))
+        derived_misses = sum(1 for row in trial_rows if self._is_truthy_flag(row.get("miss", 0)))
+        derived_free_rewards = sum(1 for row in trial_rows if self._is_truthy_flag(row.get("free_reward_delivered", 0)))
+        derived_auto_rewards = sum(
+            1
+            for row in trial_rows
+            if self._is_truthy_flag(row.get("reward_delivered", 0))
+            and str(row.get("reward_type", "") or "").strip().lower() == "auto"
+        )
+        derived_total_rewards = (
+            _safe_int(counts.get("reward", 0))
+            + _safe_int(counts.get("manual_reward", 0))
+            + _safe_int(counts.get("reward_cal_pulse", 0))
+        )
+        reward_ul_value = _safe_float(pick("reward_ul"), self.reward_ul_var.get_float(0.0))
+        derived_water_ul = derived_total_rewards * reward_ul_value if derived_total_rewards > 0 and reward_ul_value > 0 else None
+
+        def pick_numeric(primary_key, derived_value, digits=None):
+            raw = pick(primary_key)
+            raw_num = _safe_float(raw, None)
+            if derived_value is not None and derived_value > 0 and (raw_num is None or raw_num == 0):
+                if digits is None:
+                    return str(int(derived_value))
+                return f"{float(derived_value):.{digits}f}"
+            return raw
+
         return {
             "backend": self._current_backend_name(),
             "session_id": self.session_logger.session_dir.name if self.session_logger.session_dir else "",
-            "total_trials": pick("total_trials"),
-            "hits": pick("hits"),
-            "misses": pick("misses"),
-            "free_rewards": pick("free_rewards"),
-            "auto_rewards": pick("auto_rewards"),
-            "total_rewards": pick("total_rewards"),
-            "water_ul": pick("water_ul"),
+            "total_trials": pick_numeric("total_trials", derived_total_trials),
+            "hits": pick_numeric("hits", derived_hits),
+            "misses": pick_numeric("misses", derived_misses),
+            "free_rewards": pick_numeric("free_rewards", derived_free_rewards),
+            "auto_rewards": pick_numeric("auto_rewards", derived_auto_rewards),
+            "total_rewards": pick_numeric("total_rewards", derived_total_rewards),
+            "water_ul": pick_numeric("water_ul", derived_water_ul, digits=2),
             "water_limit_ul": pick("water_limit_ul"),
             "reward_mode": pick("reward_mode"),
-            "sync_count": pick("sync_count"),
+            "sync_count": pick_numeric("sync_count", _safe_int(counts.get("sync", 0))),
             "manual_rewards": counts.get("manual_reward", 0),
             "cue_events": counts.get("cue", 0),
             "cue_only_events": counts.get("cue_only", 0),
