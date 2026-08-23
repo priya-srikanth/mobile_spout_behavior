@@ -524,11 +524,16 @@ void clearAllRewardHolds(bool emitCfg=true, bool emitEvt=true) {
 }
 
 void updateAutoRewardHoldFromMissStreak(bool emitCfg=true) {
+  (void)emitCfg;
   if (!cfg.autoHoldAfterMissEnabled) return;
   if (!(cfg.rewardMode == REWARD_AUTO_AFTER_DELAY || cfg.rewardMode == REWARD_CONTINGENT_OR_AUTO)) return;
   if (cfg.autoHoldAfterMissThreshold < 1) return;
   if (consecutiveMisses >= (int)cfg.autoHoldAfterMissThreshold) {
-    setAutoRewardHold(true, emitCfg, true);
+    autoRewardsHeld = true;
+    bool rawPressed = (digitalRead(PIN_LICK_IN) == LOW);
+    bool lickLineActive = lickCfg.activeLow ? rawPressed : !rawPressed;
+    if (lickLineActive) autoRewardsHeld = false;
+    refreshRewardHoldState(false);
   }
 }
 
@@ -1446,11 +1451,6 @@ void updateLick() {
 
   uint32_t now = millis();
 
-  // Clear AUTO hold on any detected lick level, even if the contact began before the hold engaged.
-  if (currentState && autoRewardsHeld) {
-    setAutoRewardHold(false, true, true);
-  }
-
   // v38: ONSET from the ISR (never missed) -- drain every captured onset.
   uint8_t pending;
   noInterrupts(); pending = isrOnsetPending; isrOnsetPending = 0; interrupts();
@@ -1458,6 +1458,10 @@ void updateLick() {
     pending--;
     if (!lickCurrent) { lickCurrent = true; lastLickChangeMs = now; }
     emitEvent("lick_on");
+    if (autoRewardsHeld) {
+      autoRewardsHeld = false;
+      refreshRewardHoldState(false);
+    }
     if (lickSensingEnabled) {
       lickOnsetLatched = true;
       lastLickOnsetMs = now;
