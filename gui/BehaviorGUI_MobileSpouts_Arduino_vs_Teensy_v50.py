@@ -507,6 +507,8 @@ class SessionLogger:
 
     def _update_trial_from_event_row(self, row: dict, kv: dict):
         event_name = str(row.get("event_name", "") or "")
+        if event_name == "free_reward_trial":
+            return
         trial_id = self._normalize_trial_id(row.get("trial_id", ""))
         explicit_flag = kv.get("_trial_id_explicit_for_logger", None)
         if explicit_flag is None:

@@ -75,6 +75,9 @@ This only bypasses the AUTO hold path. Manual holds still stay active until expl
 - **`trials.csv` duplicate rows from early move licks are fixed.** Lick events during `move_to_target`
   can still carry the firmware's previous raw trial id; GUI `v50` now keeps those licks on the already-open
   normalized trial row instead of writing an extra previous-trial summary row.
+- **`trials.csv` block-transition position summaries are protected.** `free_reward_trial` is a next-trial
+  planning event emitted just before `trial_start` with the previous raw trial id, so GUI `v50` no longer lets
+  it update the current completed trial row. Raw `events.csv` still logs the event unchanged.
 - **Arduino connect-time solenoid blip is considered a hardware reset-window issue.** Opening the Mega serial
   port resets the board; before firmware `setup()` runs, pins can float. Firmware already drives `D8` LOW as
   early as possible in `setup()`, and no additional software change was made. If needed later, the preferred
