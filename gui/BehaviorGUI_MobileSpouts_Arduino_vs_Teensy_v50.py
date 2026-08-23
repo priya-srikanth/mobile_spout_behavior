@@ -518,6 +518,17 @@ class SessionLogger:
         trial_row_id = self._effective_trial_row_id(event_name, trial_id)
         if not trial_row_id:
             return
+        if (
+            event_name in ("lick", "lick_on", "lick_off")
+            and self._current_trial is not None
+            and str(row.get("state", "") or "").strip().lower() == "move_to_target"
+        ):
+            current_id = self._normalize_trial_id(self._current_trial.get("trial_id", ""))
+            try:
+                if current_id and int(float(current_id)) == int(float(trial_row_id)) + 1:
+                    trial_row_id = current_id
+            except Exception:
+                pass
         if event_name == "trial_start":
             # A trial_start ALWAYS begins a new trial row.
             #

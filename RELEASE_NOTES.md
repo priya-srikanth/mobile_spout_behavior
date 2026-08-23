@@ -71,6 +71,9 @@ This only bypasses the AUTO hold path. Manual holds still stay active until expl
   in the GUI config. During connect/handshake the GUI temporarily disables polling, then restores the saved
   state once the Arduino/Teensy is ready or the handshake times out, preventing saved polling from disrupting
   fragile Arduino serial-open handshakes.
+- **`trials.csv` duplicate rows from early move licks are fixed.** Lick events during `move_to_target`
+  can still carry the firmware's previous raw trial id; GUI `v50` now keeps those licks on the already-open
+  normalized trial row instead of writing an extra previous-trial summary row.
 - **Arduino connect-time solenoid blip is considered a hardware reset-window issue.** Opening the Mega serial
   port resets the board; before firmware `setup()` runs, pins can float. Firmware already drives `D8` LOW as
   early as possible in `setup()`, and no additional software change was made. If needed later, the preferred
