@@ -1186,19 +1186,31 @@ void closeTrialAndCueGates() {
 }
 
 void openRewardValve(uint32_t durMs, bool bypassHold=false) {
-  if (!taskRewardsHeld || bypassHold) {
+  bool valveOpen = (!taskRewardsHeld || bypassHold);
+  uint32_t t0 = millis();
+  bool rewardTtlHigh = true;
+
+  if (valveOpen) {
     digitalWrite(PIN_SOLENOID, HIGH);
   }
-  pulsePin(PIN_TTL_REWARD, TTL_PULSE_MS);
-  uint32_t t0 = millis();
+  digitalWrite(PIN_TTL_REWARD, HIGH);
+  pulseEndReward = 0;
+
   while (millis() - t0 < durMs) {
-    handleSerialDuringMotionWait();
+    if (rewardTtlHigh && millis() - t0 >= TTL_PULSE_MS) {
+      digitalWrite(PIN_TTL_REWARD, LOW);
+      rewardTtlHigh = false;
+    }
     updateTTLPulses();
-    updateLick();
-    updateButton();
-    updateSync();
   }
+
   digitalWrite(PIN_SOLENOID, LOW);
+  while (rewardTtlHigh && millis() - t0 < TTL_PULSE_MS) {
+    updateTTLPulses();
+  }
+  if (rewardTtlHigh) {
+    digitalWrite(PIN_TTL_REWARD, LOW);
+  }
 }
 
 // ---------- Zaber motion ----------
