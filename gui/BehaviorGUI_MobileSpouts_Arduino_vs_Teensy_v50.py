@@ -4862,10 +4862,10 @@ class BaseApp(tk.Tk):
         try:
             data = json.loads(Path(path).read_text())
             self._apply_motion_coords_from_config_dict(data)
-            profile_name = ""
-            if isinstance(data, dict):
-                profile_name = str(data.get("mouse_profile_name", "")).strip()
-            self._set_current_mouse_profile(profile_name or Path(path).stem)
+            # For a coords-only load, the operator picked a specific file on purpose.
+            # Show that file's stem in the Mouse profile area even if the JSON carries
+            # an older embedded mouse_profile_name from a previous save.
+            self._set_current_mouse_profile(Path(path).stem)
             self._log_local(f"[GUI] Loaded mouth/dock/safe_z from config {path}")
         except Exception as e:
             messagebox.showerror(APP_TITLE, f"Load motion coordinates failed:\n{e}")
