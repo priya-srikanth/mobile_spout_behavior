@@ -24,11 +24,11 @@ All three run the same task and speak the same serial protocol, so one GUI drive
 
 ## Current files
 
-- `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v50.py` — stable `v47`-line GUI with one-row-per-trial logging, lick-based auto-hold resume, and coordinate-only profile label refresh
+- `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v50.py` — stable `v47`-line GUI with one-row-per-trial logging, coordinate-only profile label refresh, saved auto-poll with connect-time deferral, and corrected auto/free reward raster markers
 - `firmware/teensy_smc02/Behavior_MobileSpouts_2pRAM_Teensy_v37/`
 - `firmware/teensy_smc02/Behavior_MobileSpouts_GB219_Teensy_v37/`
 - `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v36/` — current widefield rig build
-- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v39/` — `v38`-based Zaber build with any-lick auto-hold release
+- `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v39/` — `v38`-based Zaber build with conservative auto-hold release and hard-timed reward valve pulses
 - `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v37/`
 - `tools/LickScan_Teensy/` — read-only pin scanner for identifying lick lines safely
 - `docs/Wiring_2pRAM_Teensy_v37.html` — printable bench wiring sheet for the shared-board rig

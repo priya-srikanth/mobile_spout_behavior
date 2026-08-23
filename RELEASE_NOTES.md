@@ -51,6 +51,28 @@ after the hold engaged.
 
 This only bypasses the AUTO hold path. Manual holds still stay active until explicitly released.
 
+### Late v39/v50 bench fixes (2026-08-23)
+
+- **Reward valve pulses are now hard-timed in Arduino/Zaber `v39`.** `openRewardValve()` no longer
+  services serial/status/sync/lick-printing while the solenoid is open. This was added after logs showed
+  rare cue-to-reward-event delays of ~120-222 ms in the pre-fix build; the repeat test after the change
+  showed auto rewards clustered at ~23-34 ms cue-to-reward-event with `task.reward_ms=18`. Lick onsets
+  are still interrupt-captured, but licks that occur during the solenoid-open window may be logged a few
+  ms late. The DAQ lick-detector line remains the authoritative high-precision lick timing source.
+- **AUTO reward hold stays close to `v38` lick behavior.** `updateLick()` is intentionally kept identical
+  to `v38`; the added level check only prevents AUTO hold from engaging if the lick input is already active
+  when the hold threshold is reached. Manual holds are unchanged.
+- **Cumulative raster marker priority changed in GUI `v50`.** Auto/free/manual rewards are shown as teal
+  rings even if a later lick makes the trial count as a hit. Contingent/earned hits remain green, misses red.
+- **Auto STATUS poll is saved, but deferred during serial connection.** The checkbox and interval are stored
+  in the GUI config. During connect/handshake the GUI temporarily disables polling, then restores the saved
+  state once the Arduino/Teensy is ready or the handshake times out, preventing saved polling from disrupting
+  fragile Arduino serial-open handshakes.
+- **Arduino connect-time solenoid blip is considered a hardware reset-window issue.** Opening the Mega serial
+  port resets the board; before firmware `setup()` runs, pins can float. Firmware already drives `D8` LOW as
+  early as possible in `setup()`, and no additional software change was made. If needed later, the preferred
+  fix is a pulldown on the solenoid driver input (`D8`) rather than more GUI/firmware logic.
+
 ---
 
 ## GUI v49 — one row per trial in `trials.csv` (2026-08-14)
