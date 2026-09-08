@@ -2531,8 +2531,15 @@ class BaseApp(tk.Tk):
                 self._sync_active_until = max(self._sync_active_until, event_now + ttl_ms/1000.0)
             elif name in ("lick", "lick_on"):
                 self._lick_state_current = 1
+                # The live lick trace is sampled from periodic STAT lines, which can miss brief
+                # digital highs between samples even though the device emitted a real lick_on
+                # event. Add an event-time sample so the trace and raster stay aligned.
+                if self._lick_trace_is_digital:
+                    self.lick_samples.append((event_now, 1.0, None, None, 1))
             elif name == "lick_off":
                 self._lick_state_current = 0
+                if self._lick_trace_is_digital:
+                    self.lick_samples.append((event_now, 0.0, None, None, 0))
             elif name == "manual_reward_hold_on":
                 latest_status["manual_reward_hold_active"] = "1"
                 latest_status["rewards_held"] = "1"

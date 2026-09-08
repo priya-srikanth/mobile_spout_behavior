@@ -190,7 +190,7 @@ static const uint32_t POSITION_CODE_GAP_MS   = 6;
 static const uint32_t MOVE_SETTLE_MS = 20;
 static const uint32_t SMC02_STOP_PULSE_MS = 80;
 static const uint32_t LICK_REARM_AFTER_MOTION_MS = 75;
-static const uint32_t LICK_EARLY_ONSET_CONFIRM_MS = 2;
+static const uint32_t LICK_EARLY_ONSET_CONFIRM_MS = 1;
 
 static const uint32_t DEFAULT_CUE_DURATION_MS = 1000;
 static const uint32_t DEFAULT_CUE_FREQUENCY_HZ = 6000;
@@ -362,7 +362,7 @@ struct BehaviorConfig {
 
 struct LickConfig {
   bool activeLow = DEFAULT_LICK_ACTIVE_LOW;
-  uint32_t debounceMs = 20;
+  uint32_t debounceMs = 8;
   // legacy fields retained for GUI/protocol compatibility, unused for digital lick input
   float baselineAlpha = 0.005f;
   int thresholdCounts = 500;

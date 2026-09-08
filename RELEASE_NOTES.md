@@ -1,5 +1,40 @@
 # Release Notes
 
+## Existing v40 / GUI v49 lick tuning — recorded 2026-09-08
+
+These edits were already present and uncommitted when this session began. They
+are now recorded at the user's request; their original author and edit date are
+not established. The inspected GB219 v40 and GUI v49 files had August 17, 2026
+modification timestamps, which are provenance hints, not proof of authorship.
+
+- Both Teensy v40 rig builds reduce LICK_EARLY_ONSET_CONFIRM_MS from 2 to 1 ms
+  and the default lick.debounce_ms from 20 to 8 ms. The existing hybrid polled
+  detector, INPUT_PULLUP setup, and 20 ms refractory default remain unchanged.
+  Code-derived intent: allow earlier onset latching and shorter intervals between
+  accepted state changes. The debounce implementation measures elapsed time since
+  the last accepted transition; it does not require eight milliseconds of stable
+  input. Configured lick.debounce_ms values can override the new default.
+- GUI v49 now appends digital lick/lick_on and lick_off events to the live lick
+  trace as high and low samples, respectively. This can display brief contacts
+  missed by periodic status sampling. Samples use GUI receipt time, not device
+  timestamps. Analog traces are not given these synthetic digital samples.
+  Serial protocol, device detection logic, and trial logging are not changed by
+  this GUI edit. An early firmware onset latch without a lick_on event is not
+  made visible by this change.
+
+Decision: preserve these pre-existing edits as a separate historical change.
+They are not evidence that the user's reported lick-detection failures in the
+intervening Teensy versions are resolved. They are not copied into v41/v42 or
+GUI v44, and no corresponding GUI v50 modification is included.
+
+Validation: GUI syntax and extracted event-branch execution passed for digital
+and analog modes (including a brief onset/offset pair). Both v40 timing defaults
+and unchanged refractory defaults were checked; git diff --check passed.
+The existing v49 trial-logging pytest suite could not run because pytest is not
+installed in either available Python runtime. No firmware compilation, hardware
+test, or live GUI test was performed for this archival commit.
+
+
 ## Candidate v42 — v36 lick behavior with dual-rig trial movement
 
 GB219 and 2pRAM v42 candidates retain v36 lick detection and the GUI v44 protocol,
