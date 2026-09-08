@@ -1,5 +1,18 @@
 # Release Notes
 
+## Zaber v40 candidate — sequential trial movement (2026-09-08)
+
+New v39-derived Arduino Mega/Zaber build: trial return moves Y-Z-X to dock;
+trial approach moves X-Z-Y to target. Each axis completes before the next starts,
+using the existing blocking Zaber move and STOP/error handling. Trial moves use
+destination Z directly; manual moves retain the safe-Z waypoint.
+
+The original v39 lick detection, reward timing/hold logic, TTLs, EEPROM format and
+serial protocol are unchanged. This is an uncompiled, hardware-unvalidated
+candidate, copied to both the repository and local Arduino sketch folders.
+See docs/V42_MOVEMENT_ROLLOUT.md for the updated rollout record and bench checks.
+
+
 ## Existing v40 / GUI v49 lick tuning — recorded 2026-09-08
 
 These edits were already present and uncommitted when this session began. They
@@ -39,8 +52,7 @@ test, or live GUI test was performed for this archival commit.
 
 GB219 and 2pRAM v42 candidates retain v36 lick detection and the GUI v44 protocol,
 adding rig-specific pins and Y-Z-X trial return / X-Z-Y approach. These are
-uncompiled, unvalidated candidates, not a completed rig rollout. Zaber remains
-unchanged and its movement update is still pending. See
+uncompiled, unvalidated candidates, not a completed rig rollout. Zaber v40 now provides the corresponding movement candidate; hardware validation is pending. See
 [the rollout and session handoff](docs/V42_MOVEMENT_ROLLOUT.md) for scope,
 verification results, and the isolated commit/merge plan. The existing GUI v50
 export listed below is not required for this v36-based candidate.

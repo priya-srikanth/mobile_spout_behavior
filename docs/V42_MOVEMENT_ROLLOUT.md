@@ -14,7 +14,7 @@ their v36 safe-Z path.
 | --- | --- |
 | GB219, v36-derived v41 | Candidate prepared separately; no confirmed upload or bench validation |
 | Dual-rig GB219 / 2pRAM v42 | Two candidate sketches prepared in this change; compilation and rig validation pending; rollout not completed |
-| Arduino / Zaber | Requested and still unimplemented; do not assume Teensy changes apply to Zaber |
+| Arduino / Zaber | v40 candidate now implements the order, based on v39; copied to repository and local Arduino folder; compilation and hardware validation pending |
 
 The user reported that lick detection did not work in the intervening dual-rig
 Teensy iterations. The cause is not established. v42 deliberately starts from the
@@ -71,10 +71,25 @@ The integration uses separate commits for the two v42 sketches plus regression
 tests, and for this note plus the release-note pointer. Remote main was found to
 contain 13 newer commits (through 842db8a), including GUI v50 and Zaber v39 work;
 those changes must be retained when integrating. v42 remains paired with GUI v44,
-and no Zaber movement implementation is included here. Reconcile shared
+and the subsequent Zaber v40 candidate now implements the same trial order. Reconcile shared
 documentation during integration without staging the existing v40/v49 work.
 
 The earlier supplied conversation refers to Phase 7 and COWORK_SESSION_STATE.md,
 but that session-state file is absent from this repository. This note is the
 handoff record for the active Claude workflow; reconcile it with the actual
 session-state file on the destination branch without overwriting parallel work.
+
+## Zaber v40 follow-up — 2026-09-08
+
+At the user's request, added a new v39-derived Zaber v40 sketch. Trial return is
+Y-Z-X and approach is X-Z-Y, using destination coordinates directly. Manual
+safe-Z moves, v39 interrupt lick detection, reward timing/hold behavior, TTLs,
+EEPROM layout, and serial protocol remain unchanged. Each existing absolute move
+waits for IDLE; errors or STOP short-circuit the remaining axes. This is not a
+v36-based Zaber build and is not a change to the original v39 sketch.
+
+Source regression checks cover complete v39 preservation outside the new helper
+and two trial call sites, axis order and error/abort guards. Compile and bench-test
+before use; no flash or hardware validation is claimed. Confirm dock Y physically
+withdraws beyond licking reach before Z/X movement. Local Arduino and repository
+copies are provided; the rig's actual deployed version is not changed by copying.
