@@ -1,5 +1,15 @@
 # Release Notes
 
+## Candidate v42 — v36 lick behavior with dual-rig trial movement
+
+GB219 and 2pRAM v42 candidates retain v36 lick detection and the GUI v44 protocol,
+adding rig-specific pins and Y-Z-X trial return / X-Z-Y approach. These are
+uncompiled, unvalidated candidates, not a completed rig rollout. Zaber remains
+unchanged and its movement update is still pending. See
+[the rollout and session handoff](docs/V42_MOVEMENT_ROLLOUT.md) for scope,
+verification results, and the isolated commit/merge plan. The existing GUI v49
+export listed below is not required for this v36-based candidate.
+
 ## Current export — mixed firmware versions, GUI `v49`
 
 - GUI: `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v49.py` — **use this one on all rigs**
