@@ -7,22 +7,91 @@ adding rig-specific pins and Y-Z-X trial return / X-Z-Y approach. These are
 uncompiled, unvalidated candidates, not a completed rig rollout. Zaber remains
 unchanged and its movement update is still pending. See
 [the rollout and session handoff](docs/V42_MOVEMENT_ROLLOUT.md) for scope,
-verification results, and the isolated commit/merge plan. The existing GUI v49
+verification results, and the isolated commit/merge plan. The existing GUI v50
 export listed below is not required for this v36-based candidate.
 
-## Current export — mixed firmware versions, GUI `v49`
+## Current export — mixed firmware versions, GUI `v50`
 
-- GUI: `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v49.py` — **use this one on all rigs**
-  (v49 = v48 + one-row-per-trial logging; see below)
+- GUI: `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v50.py` — stable `v47`-line build with the fixes below
 - 2pRAM Teensy / SMC02: `firmware/teensy_smc02/Behavior_MobileSpouts_2pRAM_Teensy_v37/`
 - GB219 Teensy / SMC02: `firmware/teensy_smc02/Behavior_MobileSpouts_GB219_Teensy_v37/`
 - Widefield Mega / Zaber: `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v36/`
+- Alternate Widefield Mega / Zaber build: `firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v39/`
 - Bench utility: `tools/LickScan_Teensy/`
 
 As of August 7, 2026, the widefield rig is intentionally staying on Arduino Mega / Zaber `v36`, not `v37`;
 the `v37` faults that caused that (see "v37 fixes, 2026-08-09" below) are now fixed but not yet bench-tested.
 
 **The serial protocol is unchanged from `v36`.** Every command, config key, event name and response string is identical, so GUI `v44` drives all three `v37` builds with no modification.
+
+---
+
+## GUI v50 — stable `v47` line with trial-log and reward-hold fixes (2026-08-23)
+
+This GUI intentionally starts from the `v47` line because that is the branch behaving reliably on the
+rig, rather than layering more changes onto the newer `v48`/`v49` line.
+
+- **One row per trial in `trials.csv`.** `trial_start` rows are now normalized onto the ACTUAL trial
+  number (`raw device trial id + 1` for `trial_start` only), so the `trial_start` placeholder and the
+  later cue/hit/miss/reward rows coalesce into a single trial record.
+- **Coordinate-only loads now refresh the displayed current profile.** Loading just mouth/dock/safe-Z
+  from a mouse profile or config updates the GUI's "current profile" display instead of leaving the old
+  profile name on screen.
+- **User-facing note matches the intended auto-hold behavior.** The help text now reflects that rewards
+  resume on any detected lick once the firmware supports that behavior.
+
+`events.csv` is unchanged: all raw events, including `trial_start`, are still written exactly as emitted
+by the device.
+
+---
+
+## Firmware v39 — any detected lick clears AUTO reward hold (2026-08-23, Arduino Mega / Zaber)
+
+`firmware/arduino_zaber/Behavior_MobileSpouts_Zaber_Arduino_v39/` is based directly on `v38`
+(interrupt-driven lick onset / ENL fix) and keeps the same serial protocol, pin map, and motion logic.
+
+**Change.** If rewards were auto-held after too many missed rewarded trials, **any detected lick level**
+now clears that AUTO hold immediately. This is broader than the prior onset-only behavior: if the animal
+is already contacting the spout between trials when the hold is active, rewards resume without waiting for
+a brand-new lick edge.
+
+**Why this matters.** It lets a mouse consume residual reward between trial end and the next cue and still
+resume normal reward delivery, instead of leaving the spout empty because no fresh lick onset occurred
+after the hold engaged.
+
+This only bypasses the AUTO hold path. Manual holds still stay active until explicitly released.
+
+### Late v39/v50 bench fixes (2026-08-23)
+
+- **Reward valve pulses are now hard-timed in Arduino/Zaber `v39`.** `openRewardValve()` no longer
+  services serial/status/sync/lick-printing while the solenoid is open. This was added after logs showed
+  rare cue-to-reward-event delays of ~120-222 ms in the pre-fix build; the repeat test after the change
+  showed auto rewards clustered at ~23-34 ms cue-to-reward-event with `task.reward_ms=18`. Lick onsets
+  are still interrupt-captured, but licks that occur during the solenoid-open window may be logged a few
+  ms late. The DAQ lick-detector line remains the authoritative high-precision lick timing source.
+- **AUTO reward hold stays close to `v38` lick behavior.** `updateLick()` is intentionally kept identical
+  to `v38`; the added level check only prevents AUTO hold from engaging if the lick input is already active
+  when the hold threshold is reached. Manual holds are unchanged.
+- **Lick release of AUTO hold now resets the miss streak.** If AUTO hold is cleared by a detected lick, or
+  prevented because the lick line is already active at the miss threshold, `miss_streak` is reset to zero so
+  the next single missed trial does not immediately re-engage reward hold.
+- **Cumulative raster outcome priority restored in GUI `v50`.** Auto/free/manual rewards initially appear
+  as teal rings while the trial outcome is pending, then convert to green for hits or red for misses once
+  the response-window outcome is known.
+- **Auto STATUS poll is saved, but deferred during serial connection.** The checkbox and interval are stored
+  in the GUI config. During connect/handshake the GUI temporarily disables polling, then restores the saved
+  state once the Arduino/Teensy is ready or the handshake times out, preventing saved polling from disrupting
+  fragile Arduino serial-open handshakes.
+- **`trials.csv` duplicate rows from early move licks are fixed.** Lick events during `move_to_target`
+  can still carry the firmware's previous raw trial id; GUI `v50` now keeps those licks on the already-open
+  normalized trial row instead of writing an extra previous-trial summary row.
+- **`trials.csv` block-transition position summaries are protected.** `free_reward_trial` is a next-trial
+  planning event emitted just before `trial_start` with the previous raw trial id, so GUI `v50` no longer lets
+  it update the current completed trial row. Raw `events.csv` still logs the event unchanged.
+- **Arduino connect-time solenoid blip is considered a hardware reset-window issue.** Opening the Mega serial
+  port resets the board; before firmware `setup()` runs, pins can float. Firmware already drives `D8` LOW as
+  early as possible in `setup()`, and no additional software change was made. If needed later, the preferred
+  fix is a pulldown on the solenoid driver input (`D8`) rather than more GUI/firmware logic.
 
 ---
 
