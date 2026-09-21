@@ -304,3 +304,10 @@ Several functions were relying on the Arduino IDE's auto-generated prototypes (`
 
 - This repo is a lightweight source snapshot of the current GUI and firmware.
 - Versioned filenames are preserved from the active lab workflow.
+
+## Teensy v43: dock settle
+
+Both rig builds add max(500 ms, configured target settle) before the next
+approach, in addition to ITI and the existing post-motion wait. Target
+timing and motor settings are unchanged. See docs/V43_DOCK_SETTLE.md.
+Not yet compiled or hardware-validated.
