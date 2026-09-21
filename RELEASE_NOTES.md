@@ -311,3 +311,10 @@ Both rig builds add max(500 ms, configured target settle) before the next
 approach, in addition to ITI and the existing post-motion wait. Target
 timing and motor settings are unchanged. See docs/V43_DOCK_SETTLE.md.
 Not yet compiled or hardware-validated.
+
+Rationale: rapid manual direction changes reproduced wrong-direction motion;
+v42's target settle did not cover the dock-to-next-approach transition.
+The 500 ms minimum supplies conservative reversal margin while preserving
+timed-motion calibration. This is a hypothesis-driven mitigation, not a
+confirmed diagnosis. It adds at least 0.5 s per completed trial; bench-test
+physical stopping and return accuracy before use.
