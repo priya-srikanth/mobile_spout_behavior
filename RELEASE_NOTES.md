@@ -1,5 +1,20 @@
 # Release Notes
 
+## GUI v50 and 2pRAM Teensy v42 version provenance (2026-09-23)
+
+- GUI v50 now carries forward v49's explicit session-version fields. Each
+  `device_snapshot_start.json` records `gui_file`, `gui_version`, and the
+  firmware version reported by the connected device; if the device provides no
+  version, the value is recorded honestly as `unknown`.
+- The 2pRAM Teensy v42 config output now includes
+  `device.fw_version=2pRAM_Teensy_v42`, allowing GUI v50 to preserve the actual
+  firmware identity with the session.
+- The local 2pRAM v42/v43 position-code bit 2 assignment was moved from Teensy
+  pin 18 to pin 16 due to problems observed with pin 18 on the rig. Wiring notes
+  now document pin 18 as spare.
+- These changes affect provenance metadata and the documented position-code pin;
+  task scheduling, movement timing, and motor-control assignments are unchanged.
+
 ## Zaber v40 candidate — sequential trial movement (2026-09-08)
 
 New v39-derived Arduino Mega/Zaber build: trial return moves Y-Z-X to dock;

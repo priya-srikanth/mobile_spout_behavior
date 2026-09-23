@@ -1,5 +1,6 @@
 import csv
 import json
+import re
 import math
 import queue
 import threading
@@ -4674,6 +4675,24 @@ class BaseApp(tk.Tk):
         except Exception:
             return "unknown"
 
+    @staticmethod
+    def _gui_version() -> str:
+        """Return the version token from this GUI filename."""
+        m = re.search(r"_(v\d+)\.py$", Path(__file__).name)
+        return m.group(1) if m else "unknown"
+
+    def _device_firmware_version(self) -> str:
+        """Return the version reported by the connected device, if available."""
+        cache = self.device_config_cache if isinstance(self.device_config_cache, dict) else {}
+        for key in ("device.fw_version", "device.firmware_version", "device.version", "fw_version"):
+            if cache.get(key):
+                return str(cache[key])
+        status = self.latest_status if isinstance(self.latest_status, dict) else {}
+        for key in ("fw_version", "firmware", "version"):
+            if status.get(key):
+                return str(status[key])
+        return "unknown"
+
     def _session_manifest_payload(self, gui_cfg: dict):
         return {
             "app_title": APP_TITLE,
@@ -4681,6 +4700,9 @@ class BaseApp(tk.Tk):
             "gui_file": Path(__file__).name,
             "notes": self.session_notes_var.get().strip(),
             "device_snapshot": {
+                "gui_file": Path(__file__).name,
+                "gui_version": self._gui_version(),
+                "firmware_version": self._device_firmware_version(),
                 "latest_status": dict(self.latest_status) if isinstance(self.latest_status, dict) else {},
                 "config_cache": dict(self.device_config_cache),
             },

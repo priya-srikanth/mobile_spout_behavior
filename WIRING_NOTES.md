@@ -69,7 +69,7 @@ Pins `9` and `13` are additionally unreachable on this board: `13` is the Teensy
 | `7` | `PIN_TTL_POS_STB` | output | TrialStartPin BNC | patch cable |
 | `8` | `PIN_TTL_POS0` | output | ITIIndicator BNC | patch cable |
 | `17` | `PIN_TTL_POS1` | output | LeftCueIndicator BNC | patch cable |
-| `18` | `PIN_TTL_POS2` | output | RightCueIndicator BNC | patch cable |
+| `16` | `PIN_TTL_POS2` | output | Position bit 2 connection | patch cable; moved from pin 18 |
 | `20` | `PIN_TTL_TRIAL_STOP` | output | RightRewardIndicator BNC | patch cable |
 
 `PIN_TTL_TRIAL` is `PIN_UNUSED` on this rig.
@@ -82,10 +82,11 @@ Pins `9` and `13` are additionally unreachable on this board: `13` is the Teensy
 | Y | `27` | `28` | none |
 | Z | `29` | `30` | none |
 
-Six new wires. STOP lines are omitted: in P02 mode the motor halts on CW/CCW release. Pins `31`–`39` stay free if the per-axis STOP lines are ever wanted back. Spare: `0`, `16`, `23`.
+Six new wires. STOP lines are omitted: in P02 mode the motor halts on CW/CCW release. Pins `31`–`39` stay free if the per-axis STOP lines are ever wanted back. Spare: `0`, `18`, `23`.
 
 ### 2pRAM-specific notes
 
+- 2026-09-22: position code bit 2 was moved from Teensy pin 18 to pin 16 because pin 18 caused problems on this rig. This applies to the 2pRAM v42 and v43 builds.
 - Left spout set only. The right spout stays physically connected for the co-tenant, so none of its nets may be repurposed.
 - Lick input is `INPUT_PULLUP`, active-LOW (idles HIGH), matching the GB219-validated configuration. The co-tenant firmware uses `INPUT_PULLDOWN` on the same pin, implying *its* detector is active-high — if licks never register or register constantly, `SET lick.active_low=false` is the first thing to try. `tools/LickScan_Teensy/` settles it safely.
 - A Teensy GND pin must be bonded to each SMC02's control ground, or "pressed" is undefined. Watch for ground loops: the Teensy ends up bonded to three stepper-driver grounds while also grounded to the DAQ through BNC shields.
