@@ -163,3 +163,35 @@ def test_setting_failure_is_nonmodal_during_active_session():
     app.latest_status = {"run": "0", "state": "idle"}
     app._report_command_batch_error("No device acknowledgment")
     assert len(dialogs) == 1
+
+
+def test_block_start_metadata_is_written_to_events_csv():
+    gui = _load_gui()
+    logger = gui.SessionLogger()
+    rows = []
+
+    class _Writer:
+        def writerow(self, row):
+            rows.append(dict(row))
+
+    class _File:
+        @staticmethod
+        def flush():
+            pass
+
+    logger.active = True
+    logger.event_writer = _Writer()
+    logger.event_fh = _File()
+    logger.log_event(
+        {
+            "name": "block_start", "t_ms": "5000", "state": "iti",
+            "block_number": "7", "block_pos": "2", "block_size": "3",
+            "block_trial": "0", "pos": "2",
+        },
+        {},
+        "EVT name=block_start t_ms=5000 block_number=7 block_pos=2 block_size=3 block_trial=0",
+        {"latest_status": {"block_number": "6", "block_pos": "1"}},
+    )
+    row = rows[0]
+    assert row["event_name"] == "block_start"
+    assert (row["block_number"], row["block_pos"], row["block_size"], row["block_trial"]) == ("7", "2", "3", "0")

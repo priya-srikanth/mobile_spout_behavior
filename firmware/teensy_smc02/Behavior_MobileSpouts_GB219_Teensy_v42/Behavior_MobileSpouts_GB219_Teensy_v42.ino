@@ -1232,6 +1232,11 @@ void chooseNextBlockPosition() {
     return;
   }
   currentBlockNumber++;
+  emitEventDetail("block_start", "state=" + String(stateName(runState))
+                  + " block_number=" + String(currentBlockNumber)
+                  + " block_pos=" + String(currentBlockPos)
+                  + " block_size=" + String(currentBlockSize)
+                  + " block_trial=0");
 }
 
 void startNextTrial() {

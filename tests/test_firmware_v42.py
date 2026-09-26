@@ -27,6 +27,12 @@ class V42Regression(unittest.TestCase):
             text = text.replace('if (PIN_TTL_TRIAL != PIN_UNUSED) ', '')
             text = text.replace('    Serial.print(" state=");\n    Serial.print(stateName(runState));\n', '')
             text = text.replace('  emitConfigKV("device.fw_version", DEVICE_FW_VERSION);\n', '')
+            text = text.replace(
+                '  emitEventDetail("block_start", "state=" + String(stateName(runState))\n'
+                '                  + " block_number=" + String(currentBlockNumber)\n'
+                '                  + " block_pos=" + String(currentBlockPos)\n'
+                '                  + " block_size=" + String(currentBlockSize)\n'
+                '                  + " block_trial=0");\n', '')
             # Everything below the pin map must match v36, including lick defaults,
             # setup INPUT mode, entire state machine, rewards and GUI protocol.
             self.assertEqual(text.split('static const bool USE_HOME_SWITCHES', 1)[1],
@@ -52,6 +58,13 @@ class V42Regression(unittest.TestCase):
         baseline = pins((ROOT / 'Behavior_MobileSpouts_Teensy_v36.ino').read_text())
         baseline.pop('PIN_UNUSED')
         self.assertEqual(pins(gb), baseline)
+
+    def test_block_start_event_has_unambiguous_identity(self):
+        for rig in ['GB219', '2pRAM']:
+            text = build(rig)
+            self.assertEqual(text.count('emitEventDetail("block_start"'), 1)
+            for field in ['block_number', 'block_pos', 'block_size', 'block_trial=0']:
+                self.assertIn(field, text)
 
 if __name__ == '__main__':
     unittest.main()

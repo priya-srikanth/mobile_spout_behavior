@@ -117,6 +117,7 @@ class SessionLogger:
     EVENT_FIELDS = [
         "gui_timestamp_iso", "gui_timestamp_unix", "device_t_ms", "event_name", "event_source", "reward_type",
         "state", "run", "trial_id", "current_pos", "pos_idx", "pos_name",
+        "block_number", "block_pos", "block_trial", "block_size",
         "free_reward_trial", "free_reward_delivered", "sync_status", "lick_state",
         "x_mm", "y_mm", "z_mm",
         "pos_x_mm", "pos_y_mm", "pos_z_mm", "pos_dist_mm", "pos_az_deg", "pos_down_deg",
@@ -614,6 +615,10 @@ class SessionLogger:
             "current_pos": latest_status.get("current_pos", ""),
             "pos_idx": pos_idx,
             "pos_name": pos.get("name", pos.get("label", context.get("pos_name", ""))),
+            "block_number": kv.get("block_number", latest_status.get("block_number", "")),
+            "block_pos": kv.get("block_pos", latest_status.get("block_pos", "")),
+            "block_trial": kv.get("block_trial", latest_status.get("block_trial", "")),
+            "block_size": kv.get("block_size", latest_status.get("current_block_size", latest_status.get("block_size", ""))),
             "free_reward_trial": kv.get("free_reward_trial", latest_status.get("free_reward_trial", "")),
             "free_reward_delivered": kv.get("free_reward_delivered", latest_status.get("free_reward_delivered", "")),
             "sync_status": "1" if kv.get("name", "") == "sync" else latest_status.get("sync_state", ""),

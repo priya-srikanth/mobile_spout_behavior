@@ -19,6 +19,11 @@
 - A failed mid-session settings batch is now non-modal: it is written to the
   console and status line, while the Teensy session continues uninterrupted.
   Outside an active run, the GUI still shows an error dialog.
+- Firmware v42 now emits an explicit `block_start` event for every newly
+  selected block. The event carries `block_number`, `block_pos`, `block_size`,
+  and `block_trial=0`, so adjacent blocks remain distinguishable even if two
+  balanced cycles end and begin on the same position. GUI v50 stores these as
+  dedicated columns in `events.csv`.
 
 ## GUI v50 and 2pRAM Teensy v42 version provenance (2026-09-23)
 
