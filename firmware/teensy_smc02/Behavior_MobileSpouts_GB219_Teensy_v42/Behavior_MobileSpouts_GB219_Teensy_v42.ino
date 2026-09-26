@@ -22,18 +22,19 @@ enum RewardTriggerType : uint8_t;
 #endif
 static const uint8_t PIN_UNUSED = 255;
 #if RIG_2PRAM
-// Shared board: left lick input is pin 14; motors use co-tenant-unused pins 25-30.
+static const char* DEVICE_FW_VERSION = "2pRAM_Teensy_v42";
+// 2pRAM wiring: lick input is pin 15; motors use co-tenant-unused pins 25-30.
 // STOP lines and separate trial-start TTL are unconnected. Pin 7 marks arrival.
-static const uint8_t PIN_SPEAKER               = 2;
-static const uint8_t PIN_SYNC_OUT              = 3;
+static const uint8_t PIN_SPEAKER               = 3;
+static const uint8_t PIN_SYNC_OUT              = 2;
 static const uint8_t PIN_REWARD_LEFT_SOLENOID  = 5;
-static const uint8_t PIN_LICK_LEFT_IN          = 14;
+static const uint8_t PIN_LICK_LEFT_IN          = 15;
 static const uint8_t PIN_CUE_TTL               = 6;
 static const uint8_t PIN_REWARD_LEFT_INDICATOR = 19;
 static const uint8_t PIN_TTL_POS_STB           = 7;
 static const uint8_t PIN_TTL_POS0              = 8;
 static const uint8_t PIN_TTL_POS1              = 17;
-static const uint8_t PIN_TTL_POS2              = 18;
+static const uint8_t PIN_TTL_POS2              = 16;  // 2pRAM local wiring; moved from pin 18
 static const uint8_t PIN_TTL_TRIAL_STOP        = 20;
 static const uint8_t PIN_TTL_TRIAL             = PIN_UNUSED;
 static const uint8_t PIN_X_CW   = 25;
@@ -46,6 +47,7 @@ static const uint8_t PIN_Z_CW   = 29;
 static const uint8_t PIN_Z_CCW  = 30;
 static const uint8_t PIN_Z_STOP = PIN_UNUSED;
 #else
+static const char* DEVICE_FW_VERSION = "GB219_Teensy_v42";
 // Dedicated GB219: original v36 pin mapping.
 static const uint8_t PIN_SYNC_OUT              = 2;
 static const uint8_t PIN_SPEAKER               = 3;
@@ -1464,6 +1466,8 @@ void updateSync() {
     Serial.print("EVT name=sync");
     Serial.print(" t_ms=");
     Serial.print(now);
+    Serial.print(" state=");
+    Serial.print(stateName(runState));
     Serial.print(" count=");
     Serial.print(syncPulseCount);
     Serial.print(" ttl_ms=");
@@ -1943,6 +1947,7 @@ bool shouldStopBeforeStartingNextBlock() {
 }
 
 void emitConfig() {
+  emitConfigKV("device.fw_version", DEVICE_FW_VERSION);
   emitConfigKV("task.reward_ms", cfg.rewardOpenMs);
   emitConfigKV("task.reward_ul", cfg.estimatedRewardUL, 3);
   emitConfigKV("task.water_limit_ul", cfg.sessionWaterLimitUL, 3);

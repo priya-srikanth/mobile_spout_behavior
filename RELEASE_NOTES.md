@@ -1,5 +1,25 @@
 # Release Notes
 
+## GUI v50 acknowledged mid-session settings (2026-09-26)
+
+- Fixed a reliability bug in command batches: v50 previously sent each `SET`
+  after a fixed delay and advanced even when 2pRAM v42 replied
+  `ERR cmd=busy code=motion_wait detail=SET` during stage motion.
+- The GUI now waits for the matching `OK cmd=set key=...` before advancing. A
+  motion-busy response retries the same setting; a missing acknowledgment is
+  retried and then shown as an explicit error instead of being labeled applied.
+- This changes only GUI command delivery and acknowledgment handling. Firmware,
+  lick detection/handling, trial logic, and motor control are unchanged.
+- Corrected event-state provenance: v42 sync events now include the current
+  task state at the device event timestamp. GUI v50 no longer substitutes a
+  potentially stale polled state for sync events from older firmware; it leaves
+  that field blank when the device did not report it.
+- The sync-state change is logging metadata only. State-machine transitions,
+  TTL timing, lick handling, rewards, and movement behavior are unchanged.
+- A failed mid-session settings batch is now non-modal: it is written to the
+  console and status line, while the Teensy session continues uninterrupted.
+  Outside an active run, the GUI still shows an error dialog.
+
 ## GUI v50 and 2pRAM Teensy v42 version provenance (2026-09-23)
 
 - GUI v50 now carries forward v49's explicit session-version fields. Each

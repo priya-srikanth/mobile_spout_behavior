@@ -25,6 +25,8 @@ class V42Regression(unittest.TestCase):
             text = text.replace('moveToTrialPosition(positions[currentTrialPos], false)', 'moveToPositionSafe(positions[currentTrialPos])')
             text = text.replace('  if (pin == PIN_UNUSED) return;\n', '')
             text = text.replace('if (PIN_TTL_TRIAL != PIN_UNUSED) ', '')
+            text = text.replace('    Serial.print(" state=");\n    Serial.print(stateName(runState));\n', '')
+            text = text.replace('  emitConfigKV("device.fw_version", DEVICE_FW_VERSION);\n', '')
             # Everything below the pin map must match v36, including lick defaults,
             # setup INPUT mode, entire state machine, rewards and GUI protocol.
             self.assertEqual(text.split('static const bool USE_HOME_SWITCHES', 1)[1],
@@ -45,7 +47,7 @@ class V42Regression(unittest.TestCase):
             return dict(re.findall(r'static const uint8_t (PIN_\w+)\s*=\s*(\w+);', s))
         expected_ram = dict(zip(
             ['PIN_SPEAKER','PIN_SYNC_OUT','PIN_REWARD_LEFT_SOLENOID','PIN_LICK_LEFT_IN','PIN_CUE_TTL','PIN_REWARD_LEFT_INDICATOR','PIN_TTL_POS_STB','PIN_TTL_POS0','PIN_TTL_POS1','PIN_TTL_POS2','PIN_TTL_TRIAL_STOP','PIN_TTL_TRIAL','PIN_X_CW','PIN_X_CCW','PIN_X_STOP','PIN_Y_CW','PIN_Y_CCW','PIN_Y_STOP','PIN_Z_CW','PIN_Z_CCW','PIN_Z_STOP'],
-            ['2','3','5','14','6','19','7','8','17','18','20','PIN_UNUSED','25','26','PIN_UNUSED','27','28','PIN_UNUSED','29','30','PIN_UNUSED']))
+            ['3','2','5','15','6','19','7','8','17','16','20','PIN_UNUSED','25','26','PIN_UNUSED','27','28','PIN_UNUSED','29','30','PIN_UNUSED']))
         self.assertEqual(pins(ram), expected_ram)
         baseline = pins((ROOT / 'Behavior_MobileSpouts_Teensy_v36.ino').read_text())
         baseline.pop('PIN_UNUSED')

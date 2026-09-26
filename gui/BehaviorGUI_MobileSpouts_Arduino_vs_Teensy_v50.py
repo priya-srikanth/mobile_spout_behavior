@@ -673,6 +673,7 @@ class BaseApp(tk.Tk):
         self._pending_free_reward_marker = None
         self._command_batch_active = False
         self._pending_command_batches = deque()
+        self._command_batch_waiting = None
         self.device_config_cache = {}
         self._adaptive_verify_after_id = None
         self._sync_active_until = 0.0
@@ -2046,6 +2047,7 @@ class BaseApp(tk.Tk):
         except Exception:
             pass
         self._connect_after_id = None
+        self._cancel_command_batch("Disconnected before all queued settings were acknowledged")
         self.client.disconnect()
         if self._autopoll_restore_after_connect is not None:
             self.autopoll_var.set(bool(self._autopoll_restore_after_connect))
@@ -2203,8 +2205,9 @@ class BaseApp(tk.Tk):
 
         if line.startswith("OK ") or line.startswith("ERR "):
             self._mark_device_ready(line)
+            data = kv_from_tokens(line.split()[1:])
+            self._handle_command_batch_response(line, data)
             if line.startswith("OK "):
-                data = kv_from_tokens(line.split()[1:])
                 if data.get("cmd", "") == "set":
                     key = data.get("key", "")
                     val = data.get("value", "")
@@ -2639,8 +2642,16 @@ class BaseApp(tk.Tk):
             if "trial" not in data and latest_status.get("total_trials", "") not in ("", None):
                 data["trial"] = str(latest_status.get("total_trials", ""))
             data["_trial_id_explicit_for_logger"] = "1" if trial_id_explicit_for_logger else "0"
-            if "state" not in data and latest_status.get("state", "") not in ("", None):
-                data["state"] = str(latest_status.get("state", ""))
+            if "state" not in data:
+                if name == "sync":
+                    # Older firmware omitted state from sync events. A polled
+                    # status is not contemporaneous with the event and can be
+                    # stale across a transition (for example cue -> response).
+                    # Keep the field honestly unknown instead of fabricating a
+                    # state; current firmware supplies it at event emission.
+                    data["state"] = ""
+                elif latest_status.get("state", "") not in ("", None):
+                    data["state"] = str(latest_status.get("state", ""))
             if "reward_mode" not in data and latest_status.get("reward_mode", "") not in ("", None):
                 data["reward_mode"] = str(latest_status.get("reward_mode", ""))
             data["event_source"] = self._infer_event_source_for_raster(name, data)
@@ -5465,6 +5476,7 @@ class App(BaseApp):
         self._command_batch_active = True
 
         def _finish():
+            self._clear_command_batch_wait()
             self._command_batch_active = False
             if final_status:
                 self.zaber_status_var.set(final_status)
@@ -5477,10 +5489,11 @@ class App(BaseApp):
                 self._drain_next_command_batch()
 
         def _abort():
+            self._clear_command_batch_wait()
             self._command_batch_active = False
             self._pending_command_batches.clear()
 
-        def _send_next(i=0):
+        def _send_next(i=0, timeout_attempt=0):
             if i >= len(commands):
                 _finish()
                 return
@@ -5488,13 +5501,120 @@ class App(BaseApp):
                 self._ensure_connected_for_command()
                 _abort()
                 return
-            ok = self.send(commands[i])
+            command = commands[i]
+            ok = self.send(command)
             if not ok:
                 _abort()
                 return
-            self.after(delay_ms, lambda: _send_next(i + 1))
+
+            # SET batches are transactional: do not advance until the device
+            # confirms this exact key. During SMC02 motion the firmware returns
+            # ERR cmd=busy code=motion_wait; retrying the same command prevents
+            # a mid-session Apply from silently skipping settings.
+            if command.strip().upper().startswith("SET "):
+                body = command.strip()[4:].strip()
+                expected_key = (body.split("=", 1)[0] if "=" in body else body.split(None, 1)[0]).strip()
+
+                def _timeout():
+                    waiting = self._command_batch_waiting
+                    if not waiting or waiting.get("command") != command:
+                        return
+                    self._command_batch_waiting = None
+                    if timeout_attempt >= 3:
+                        msg = f"No device acknowledgment for: {command}"
+                        self._report_command_batch_error(msg)
+                        _abort()
+                        return
+                    self._log_local(f"[GUI] Acknowledgment timeout; retrying: {command}")
+                    _send_next(i, timeout_attempt + 1)
+
+                timeout_id = self.after(3000, _timeout)
+                self._command_batch_waiting = {
+                    "command": command,
+                    "key": expected_key,
+                    "timeout_id": timeout_id,
+                    "on_ack": lambda: self.after(delay_ms, lambda: _send_next(i + 1, 0)),
+                    "on_busy": lambda: self.after(max(250, delay_ms), lambda: _send_next(i, 0)),
+                    "abort": _abort,
+                }
+            else:
+                self.after(delay_ms, lambda: _send_next(i + 1, 0))
 
         _send_next(0)
+
+    def _clear_command_batch_wait(self):
+        waiting = self._command_batch_waiting
+        self._command_batch_waiting = None
+        if waiting and waiting.get("timeout_id") is not None:
+            try:
+                self.after_cancel(waiting["timeout_id"])
+            except Exception:
+                pass
+
+    def _cancel_command_batch(self, reason=None):
+        had_batch = self._command_batch_active or bool(self._pending_command_batches)
+        self._clear_command_batch_wait()
+        self._command_batch_active = False
+        self._pending_command_batches.clear()
+        if had_batch and reason:
+            self._log_local(f"[GUI] {reason}")
+
+    def _report_command_batch_error(self, message):
+        """Report a settings failure without blocking a running task."""
+        self._log_local(f"[GUI ERROR] {message.replace(chr(10), ' | ')}")
+        try:
+            self.zaber_status_var.set(message.splitlines()[0])
+        except Exception:
+            pass
+        status = self.latest_status if isinstance(self.latest_status, dict) else {}
+        run_active = str(status.get("run", "0")).strip().lower() in ("1", "true", "on")
+        if not run_active:
+            try:
+                messagebox.showerror(APP_TITLE, message)
+            except Exception:
+                pass
+
+    def _handle_command_batch_response(self, line, data):
+        waiting = self._command_batch_waiting
+        if not waiting:
+            return
+
+        expected_key = str(waiting.get("key", "")).lower()
+        if line.startswith("OK ") and data.get("cmd", "").lower() == "set":
+            if str(data.get("key", "")).lower() != expected_key:
+                return
+            on_ack = waiting.get("on_ack")
+            self._clear_command_batch_wait()
+            if on_ack:
+                on_ack()
+            return
+
+        if not line.startswith("ERR "):
+            return
+        is_motion_busy = (
+            data.get("cmd", "").lower() == "busy"
+            and data.get("code", "").lower() == "motion_wait"
+            and data.get("detail", "").upper() == "SET"
+        )
+        if is_motion_busy:
+            command = waiting.get("command", "")
+            on_busy = waiting.get("on_busy")
+            self._clear_command_batch_wait()
+            self._log_local(f"[GUI] Device moving; queued setting will retry: {command}")
+            if on_busy:
+                on_busy()
+            return
+
+        # A SET-specific error is terminal for this batch. Errors belonging to
+        # auto-polled GETs or unrelated manual commands are ignored here.
+        if data.get("cmd", "").lower() == "set":
+            abort = waiting.get("abort")
+            command = waiting.get("command", "")
+            self._clear_command_batch_wait()
+            msg = f"Device rejected setting: {command}\n{line}"
+            self._report_command_batch_error(msg)
+            if abort:
+                abort()
 
     def _drain_next_command_batch(self):
         if self._command_batch_active:
