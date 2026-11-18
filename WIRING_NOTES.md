@@ -1,5 +1,26 @@
 # Wiring Notes
 
+## 2pRAM v42 wiring update — 2026-11-17
+
+Position-code bit 1 (PIN_TTL_POS1) now uses Teensy pin 23. The position bus is
+bit 0 = pin 8, bit 1 = pin 23, bit 2 = pin 16, with strobe on pin 7.
+Sync is pin 2, audio is pin 3, and left lick input is pin 15.
+
+During troubleshooting, the user moved the DAQ lead to the other side of the
+BNC-to-female-banana adapter and reported that the signal appeared to work.
+This points to the adapter/DAQ connection as a contributor; it does not establish
+that pin 17 or pin 18 was defective or that I2C caused the problem. The exact
+adapter terminal identity was not measured. Pin 23 is retained as the current
+wiring choice, not because a pin change was proven necessary.
+
+With power off, verify adapter continuity: BNC center to the intended DAQ signal
+terminal, and BNC shell to the intended ground/reference for the DAQ input mode.
+The user's successful observation is not a complete validation of all position
+codes. Both v42 exports retain a common source with only rig-selection differences;
+the GB219 active pin map is unchanged. Historical pin tables below are superseded
+by this update for 2pRAM v42.
+
+
 Derived from the current source files in this repo:
 
 - `gui/BehaviorGUI_MobileSpouts_Arduino_vs_Teensy_v44.py`
